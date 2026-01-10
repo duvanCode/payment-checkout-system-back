@@ -33,7 +33,7 @@ export class WebhooksController {
     ) { }
 
     @Post('service')
-    async handleserviceWebhook(@Body() webhook: serviceWebhookDto) {
+    async handleserviceWebhook(@Body() webhook: ServiceWebhookDto) {
         try {
             this.logger.log(`Received service webhook: ${webhook.event}`);
             this.logger.log(`Transaction data: ${JSON.stringify(webhook.data.transaction)}`);
