@@ -1,5 +1,5 @@
 export class Customer {
-    private id: string;
+    private id?: string;
     private email: string;
     private phone: string;
     private fullName: string;
@@ -7,7 +7,7 @@ export class Customer {
     private updatedAt: Date;
 
     constructor(
-        id: string,
+        id: string | undefined,
         email: string,
         phone: string,
         fullName: string,
@@ -38,7 +38,7 @@ export class Customer {
         }
     }
 
-    getId(): string {
+    getId(): string | undefined {
         return this.id;
     }
 

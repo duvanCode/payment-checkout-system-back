@@ -2,7 +2,7 @@ import { TransactionStatus } from '../enums/transaction-status.enum';
 import { Money } from '../value-objects/money.vo';
 
 export class Transaction {
-    private id: string;
+    private id?: string;
     private transactionNumber: string;
     private status: TransactionStatus;
     private productId: string;
@@ -20,7 +20,7 @@ export class Transaction {
     private processedAt?: Date;
 
     constructor(
-        id: string,
+        id: string | undefined,
         transactionNumber: string,
         status: TransactionStatus,
         productId: string,
@@ -61,7 +61,7 @@ export class Transaction {
         return `TRX-${timestamp}-${random}`;
     }
 
-    getId(): string {
+    getId(): string | undefined {
         return this.id;
     }
 

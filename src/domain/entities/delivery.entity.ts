@@ -1,5 +1,5 @@
 export class Delivery {
-    private id: string;
+    private id?: string;
     private transactionId: string;
     private address: string;
     private city: string;
@@ -10,7 +10,7 @@ export class Delivery {
     private updatedAt: Date;
 
     constructor(
-        id: string,
+        id: string | undefined,
         transactionId: string,
         address: string,
         city: string,
@@ -44,7 +44,7 @@ export class Delivery {
         return estimatedDate;
     }
 
-    getId(): string {
+    getId(): string | undefined {
         return this.id;
     }
 
