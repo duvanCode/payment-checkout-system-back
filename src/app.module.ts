@@ -1,10 +1,82 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
+import { ConfigModule } from '@nestjs/config';
+import wompiConfig from './infrastructure/config/service.config';
+
+// Database
+import { PrismaService } from './infrastructure/database/prisma.service';
+
+// Repositories
+import { PrismaProductRepository } from './infrastructure/adapters/prisma-product.repository';
+import { PrismaTransactionRepository } from './infrastructure/adapters/prisma-transaction.repository';
+import { PrismaCustomerRepository } from './infrastructure/adapters/prisma-customer.repository';
+import { PrismaDeliveryRepository } from './infrastructure/adapters/prisma-delivery.repository';
+import { PRODUCT_REPOSITORY } from './application/ports/product.repository.port';
+import { TRANSACTION_REPOSITORY } from './application/ports/transaction.repository.port';
+import { CUSTOMER_REPOSITORY } from './application/ports/customer.repository.port';
+import { DELIVERY_REPOSITORY } from './application/ports/delivery.repository.port';
+
+// Payment Gateway
+import { ServiceAdapter } from './infrastructure/adapters/service.adapter';
+import { PAYMENT_GATEWAY } from './application/ports/payment-gateway.port';
+
+// Use Cases
+import { GetProductsUseCase } from './application/use-cases/get-products.use-case';
+import { CalculateSummaryUseCase } from './application/use-cases/calculate-summary.use-case';
+import { CreateTransactionUseCase } from './application/use-cases/create-transaction.use-case';
+import { ProcessPaymentUseCase } from './application/use-cases/process-payment.use-case';
+import { UpdateStockUseCase } from './application/use-cases/update-stock.use-case';
+
+// Controllers
+import { ProductsController } from './infrastructure/controllers/products.controller';
+import { PaymentsController } from './infrastructure/controllers/payments.controller';
+import { WebhooksController } from './infrastructure/controllers/webhooks.controller';
 
 @Module({
-  imports: [],
-  controllers: [AppController],
-  providers: [AppService],
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: [wompiConfig],
+    }),
+  ],
+  controllers: [
+    ProductsController,
+    PaymentsController,
+    WebhooksController,
+  ],
+  providers: [
+    // Database
+    PrismaService,
+
+    // Repositories
+    {
+      provide: PRODUCT_REPOSITORY,
+      useClass: PrismaProductRepository,
+    },
+    {
+      provide: TRANSACTION_REPOSITORY,
+      useClass: PrismaTransactionRepository,
+    },
+    {
+      provide: CUSTOMER_REPOSITORY,
+      useClass: PrismaCustomerRepository,
+    },
+    {
+      provide: DELIVERY_REPOSITORY,
+      useClass: PrismaDeliveryRepository,
+    },
+
+    // Payment Gateway
+    {
+      provide: PAYMENT_GATEWAY,
+      useClass: ServiceAdapter,
+    },
+
+    // Use Cases
+    GetProductsUseCase,
+    CalculateSummaryUseCase,
+    CreateTransactionUseCase,
+    ProcessPaymentUseCase,
+    UpdateStockUseCase,
+  ],
 })
-export class AppModule {}
+export class AppModule { }

@@ -15,6 +15,10 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init-db:/docker-entrypoint-initdb.d
+    command:
+      - "postgres"
+      - "-c"
+      - "listen_addresses=*"
     networks:
       - products-network
     healthcheck:
@@ -22,7 +26,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
   # NestJS Application
   app:
     build:
