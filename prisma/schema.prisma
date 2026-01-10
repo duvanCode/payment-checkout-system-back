@@ -52,8 +52,8 @@ model Transaction {
   baseFee             Decimal           @db.Decimal(10, 2)
   deliveryFee         Decimal           @db.Decimal(10, 2)
   total               Decimal           @db.Decimal(10, 2)
-  wompiTransactionId  String?
-  wompiStatus         String?
+  serviceTransactionId  String?
+  serviceStatus         String?
   errorMessage        String?
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt

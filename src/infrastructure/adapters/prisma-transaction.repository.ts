@@ -72,8 +72,8 @@ export class PrismaTransactionRepository implements TransactionRepositoryPort {
                 where: { id: transaction.getId() },
                 data: {
                     status: data.status,
-                    wompiTransactionId: data.wompiTransactionId,
-                    wompiStatus: data.wompiStatus,
+                    serviceTransactionId: data.serviceTransactionId,
+                    serviceStatus: data.serviceStatus,
                     errorMessage: data.errorMessage,
                     processedAt: data.processedAt,
                     updatedAt: new Date(),
@@ -100,8 +100,8 @@ export class PrismaTransactionRepository implements TransactionRepositoryPort {
             Money.from(Number(raw.total)),
             raw.createdAt,
             raw.updatedAt,
-            raw.wompiTransactionId,
-            raw.wompiStatus,
+            raw.serviceTransactionId,
+            raw.serviceStatus,
             raw.errorMessage,
             raw.processedAt,
         );

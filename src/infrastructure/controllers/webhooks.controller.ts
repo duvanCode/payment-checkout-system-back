@@ -7,7 +7,7 @@ import {
     Logger,
     Inject,
 } from '@nestjs/common';
-import { WompiWebhookDto } from '../../application/dtos/wompi-webhook.dto';
+import { ServiceWebhookDto } from '../../application/dtos/service-webhook.dto';
 import {
     type TransactionRepositoryPort,
     TRANSACTION_REPOSITORY,
@@ -32,10 +32,10 @@ export class WebhooksController {
         private readonly updateStockUseCase: UpdateStockUseCase,
     ) { }
 
-    @Post('wompi')
-    async handleWompiWebhook(@Body() webhook: WompiWebhookDto) {
+    @Post('service')
+    async handleserviceWebhook(@Body() webhook: serviceWebhookDto) {
         try {
-            this.logger.log(`Received Wompi webhook: ${webhook.event}`);
+            this.logger.log(`Received service webhook: ${webhook.event}`);
             this.logger.log(`Transaction data: ${JSON.stringify(webhook.data.transaction)}`);
 
             const transaction = webhook.data.transaction;
@@ -68,7 +68,7 @@ export class WebhooksController {
                 };
             }
 
-            // Procesar según el status de Wompi
+            // Procesar según el status de service
             if (transaction.status === 'APPROVED') {
                 await this.handleApprovedTransaction(existingTransaction, transaction);
             } else if (transaction.status === 'DECLINED' || transaction.status === 'ERROR') {
@@ -97,11 +97,11 @@ export class WebhooksController {
         }
     }
 
-    private async handleApprovedTransaction(existingTransaction: any, wompiTransaction: any) {
-        this.logger.log(`Approving transaction: ${wompiTransaction.reference}`);
+    private async handleApprovedTransaction(existingTransaction: any, serviceTransaction: any) {
+        this.logger.log(`Approving transaction: ${serviceTransaction.reference}`);
 
         // Actualizar transacción
-        existingTransaction.approve(wompiTransaction.id, wompiTransaction.status);
+        existingTransaction.approve(serviceTransaction.id, serviceTransaction.status);
         await this.transactionRepository.update(existingTransaction);
 
         // Actualizar stock
@@ -116,7 +116,7 @@ export class WebhooksController {
 
         if (deliveryResult.isFailure) {
             // Extraer dirección del webhook si está disponible
-            const shippingAddress = wompiTransaction.shipping_address || {};
+            const shippingAddress = serviceTransaction.shipping_address || {};
             const address = shippingAddress.address_line_1 || 'Address not provided';
             const city = shippingAddress.city || 'City not provided';
             const region = shippingAddress.region || 'Region not provided';
@@ -138,13 +138,13 @@ export class WebhooksController {
         }
     }
 
-    private async handleDeclinedTransaction(existingTransaction: any, wompiTransaction: any) {
-        this.logger.log(`Declining transaction: ${wompiTransaction.reference}`);
+    private async handleDeclinedTransaction(existingTransaction: any, serviceTransaction: any) {
+        this.logger.log(`Declining transaction: ${serviceTransaction.reference}`);
 
         existingTransaction.decline(
-            wompiTransaction.id,
-            wompiTransaction.status,
-            wompiTransaction.status_message,
+            serviceTransaction.id,
+            serviceTransaction.status,
+            serviceTransaction.status_message,
         );
 
         await this.transactionRepository.update(existingTransaction);

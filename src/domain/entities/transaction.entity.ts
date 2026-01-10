@@ -12,8 +12,8 @@ export class Transaction {
     private baseFee: Money;
     private deliveryFee: Money;
     private total: Money;
-    private wompiTransactionId?: string;
-    private wompiStatus?: string;
+    private serviceTransactionId?: string;
+    private serviceStatus?: string;
     private errorMessage?: string;
     private createdAt: Date;
     private updatedAt: Date;
@@ -32,8 +32,8 @@ export class Transaction {
         total: Money,
         createdAt: Date,
         updatedAt: Date,
-        wompiTransactionId?: string,
-        wompiStatus?: string,
+        serviceTransactionId?: string,
+        serviceStatus?: string,
         errorMessage?: string,
         processedAt?: Date,
     ) {
@@ -49,8 +49,8 @@ export class Transaction {
         this.total = total;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
-        this.wompiTransactionId = wompiTransactionId;
-        this.wompiStatus = wompiStatus;
+        this.serviceTransactionId = serviceTransactionId;
+        this.serviceStatus = serviceStatus;
         this.errorMessage = errorMessage;
         this.processedAt = processedAt;
     }
@@ -85,18 +85,18 @@ export class Transaction {
         return this.status === TransactionStatus.APPROVED;
     }
 
-    approve(wompiTransactionId: string, wompiStatus: string): void {
+    approve(serviceTransactionId: string, serviceStatus: string): void {
         this.status = TransactionStatus.APPROVED;
-        this.wompiTransactionId = wompiTransactionId;
-        this.wompiStatus = wompiStatus;
+        this.serviceTransactionId = serviceTransactionId;
+        this.serviceStatus = serviceStatus;
         this.processedAt = new Date();
         this.updatedAt = new Date();
     }
 
-    decline(wompiTransactionId: string, wompiStatus: string, errorMessage?: string): void {
+    decline(serviceTransactionId: string, serviceStatus: string, errorMessage?: string): void {
         this.status = TransactionStatus.DECLINED;
-        this.wompiTransactionId = wompiTransactionId;
-        this.wompiStatus = wompiStatus;
+        this.serviceTransactionId = serviceTransactionId;
+        this.serviceStatus = serviceStatus;
         this.errorMessage = errorMessage;
         this.processedAt = new Date();
         this.updatedAt = new Date();
@@ -121,8 +121,8 @@ export class Transaction {
             baseFee: this.baseFee.getAmount(),
             deliveryFee: this.deliveryFee.getAmount(),
             total: this.total.getAmount(),
-            wompiTransactionId: this.wompiTransactionId,
-            wompiStatus: this.wompiStatus,
+            serviceTransactionId: this.serviceTransactionId,
+            serviceStatus: this.serviceStatus,
             errorMessage: this.errorMessage,
             createdAt: this.createdAt,
             updatedAt: this.updatedAt,

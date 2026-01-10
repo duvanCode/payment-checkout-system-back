@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import wompiConfig from './infrastructure/config/service.config';
+import serviceConfig from './infrastructure/config/service.config';
 
 // Database
 import { PrismaService } from './infrastructure/database/prisma.service';
@@ -35,7 +35,7 @@ import { WebhooksController } from './infrastructure/controllers/webhooks.contro
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [wompiConfig],
+      load: [serviceConfig],
     }),
   ],
   controllers: [

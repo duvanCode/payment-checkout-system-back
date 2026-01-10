@@ -1,4 +1,4 @@
-export class WompiWebhookDto {
+export class ServiceWebhookDto {
     event: string;
     data: {
         transaction: {

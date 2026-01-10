@@ -86,7 +86,7 @@ export class ProcessPaymentUseCase {
             const transaction = transactionResult.getValue();
             this.logger.log(`Transaction created: ${transaction.getTransactionNumber()}`);
 
-            // PASO 4: Procesar pago con Wompi
+            // PASO 4: Procesar pago con service
             const paymentResult = await this.paymentGateway.processPayment({
                 amount: summary.total,
                 currency: 'COP',
