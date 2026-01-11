@@ -214,26 +214,18 @@ export class ServiceAdapter implements PaymentGatewayPort {
     async processPayment(request: PaymentRequest): Promise<Result<PaymentResponse>> {
         try {
             this.logger.log(`Processing payment for reference: ${request.reference}`);
+            this.logger.log(`Using card token: ${request.cardToken}`);
 
-            // PASO 1: Crear token de la tarjeta
-            const cardTokenResult = await this.createCardToken(request);
-            if (cardTokenResult.isFailure) {
-                return Result.fail(cardTokenResult.getError());
-            }
-            const cardToken = cardTokenResult.getValue();
-
-            this.logger.log(`Card token created: ${cardToken}`);
-            // PASO 2: Obtener token de aceptación
+            // PASO 1: Obtener token de aceptación
             const acceptanceTokenResult = await this.getAcceptanceToken();
             if (acceptanceTokenResult.isFailure) {
                 return Result.fail(acceptanceTokenResult.getError());
             }
             const acceptanceToken = acceptanceTokenResult.getValue();
 
-            // PASO 3: Crear transacción
+            // PASO 2: Crear transacción
             const transactionResult = await this.createTransaction({
                 ...request,
-                cardToken,
                 acceptanceToken,
             });
 
@@ -274,36 +266,6 @@ export class ServiceAdapter implements PaymentGatewayPort {
         } catch (error) {
             this.logger.error(`Error fetching transaction: ${error.message}`, error.stack);
             return Result.fail(`Failed to fetch transaction: ${error.message}`);
-        }
-    }
-
-    private async createCardToken(request: PaymentRequest): Promise<Result<string>> {
-        try {
-            const response = await this.httpClient.post('/tokens/cards', {
-                number: request.cardNumber,
-                cvc: request.cvv,
-                exp_month: request.expirationMonth,
-                exp_year: request.expirationYear,
-                card_holder: request.cardHolderName,
-            }, {
-                headers: {
-                    Authorization: `Bearer ${this.publicKey}`,
-                },
-            });
-
-            if (response.data.status === 'CREATED') {
-                return Result.ok(response.data.data.id);
-            }
-
-            return Result.fail('Failed to create card token');
-        } catch (error) {
-            this.logger.error(`Error creating card token: ${error.message}`);
-
-            if (error.response?.data?.error) {
-                return Result.fail(`Card token error: ${error.response.data.error.type}`);
-            }
-
-            return Result.fail(`Failed to create card token: ${error.message}`);
         }
     }
 

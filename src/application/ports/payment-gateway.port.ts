@@ -5,11 +5,7 @@ export interface PaymentRequest {
     currency: string;
     reference: string;
     customerEmail: string;
-    cardNumber: string;
-    cardHolderName: string;
-    expirationMonth: string;
-    expirationYear: string;
-    cvv: string;
+    cardToken: string; // Token generado en el frontend usando Wompi
 }
 
 export interface PaymentResponse {

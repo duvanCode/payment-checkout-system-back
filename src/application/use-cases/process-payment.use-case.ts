@@ -18,7 +18,6 @@ import {
 import { PaymentRequestDto } from '../dtos/payment-request.dto';
 import { PaymentResultDto } from '../dtos/payment-result.dto';
 import { Result } from '../../shared/result';
-import { CreditCard } from '../../domain/value-objects/credit-card.vo';
 import { CreateTransactionUseCase } from './create-transaction.use-case';
 import { UpdateStockUseCase } from './update-stock.use-case';
 import { CalculateSummaryUseCase } from './calculate-summary.use-case';
@@ -47,13 +46,7 @@ export class ProcessPaymentUseCase {
         try {
             this.logger.log(`Starting payment process for product: ${dto.productId}`);
 
-            // PASO 1: Validar tarjeta de crédito
-            const cardValidation = this.validateCreditCard(dto);
-            if (cardValidation.isFailure) {
-                return Result.fail(cardValidation.getError());
-            }
-
-            // PASO 2: Calcular summary (valida stock también)
+            // PASO 1: Calcular summary (valida stock también)
             const summaryResult = await this.calculateSummaryUseCase.execute({
                 productId: dto.productId,
                 quantity: dto.quantity,
@@ -66,7 +59,7 @@ export class ProcessPaymentUseCase {
 
             const summary = summaryResult.getValue();
 
-            // PASO 3: Crear transacción en estado PENDING
+            // PASO 2: Crear transacción en estado PENDING
             const transactionResult = await this.createTransactionUseCase.execute({
                 productId: dto.productId,
                 quantity: dto.quantity,
@@ -86,27 +79,51 @@ export class ProcessPaymentUseCase {
             const transaction = transactionResult.getValue();
             this.logger.log(`Transaction created: ${transaction.getTransactionNumber()}`);
 
-            // PASO 4: Procesar pago con service
+            // PASO 3: Procesar pago con Wompi (usando token generado en el frontend)
             const paymentResult = await this.paymentGateway.processPayment({
                 amount: summary.total,
                 currency: 'COP',
                 reference: transaction.getTransactionNumber(),
                 customerEmail: dto.customerEmail,
-                cardNumber: dto.cardNumber,
-                cardHolderName: dto.cardHolderName,
-                expirationMonth: dto.expirationMonth,
-                expirationYear: dto.expirationYear,
-                cvv: dto.cvv,
+                cardToken: dto.cardToken,
             });
 
-            // PASO 5: Procesar resultado del pago
+            // PASO 4: Procesar resultado del pago
             if (paymentResult.isSuccess) {
-                return await this.handleSuccessfulPayment(
-                    transaction,
-                    paymentResult.getValue(),
-                    dto,
-                    summary.productName,
+                const paymentResponse = paymentResult.getValue();
+
+                // Actualizar transacción con el estado real de Wompi
+                transaction.updateFromService(
+                    paymentResponse.transactionId,
+                    paymentResponse.status
                 );
+                await this.transactionRepository.update(transaction);
+
+                // Procesar según el estado de Wompi
+                const wompiStatus = paymentResponse.status.toUpperCase();
+
+                if (wompiStatus === 'APPROVED') {
+                    // Solo procesar delivery y stock si está aprobado
+                    return await this.handleApprovedPayment(
+                        transaction,
+                        paymentResponse,
+                        dto,
+                        summary.productName,
+                    );
+                } else if (wompiStatus === 'PENDING') {
+                    // Transacción pendiente - esperar confirmación via webhook
+                    return await this.handlePendingPayment(
+                        transaction,
+                        paymentResponse,
+                        summary.productName,
+                    );
+                } else {
+                    // Transacción rechazada o error
+                    return await this.handleFailedPayment(
+                        transaction,
+                        paymentResponse.statusMessage || `Transaction ${wompiStatus}`,
+                    );
+                }
             } else {
                 return await this.handleFailedPayment(
                     transaction,
@@ -119,39 +136,15 @@ export class ProcessPaymentUseCase {
         }
     }
 
-    private validateCreditCard(dto: PaymentRequestDto): Result<CreditCard> {
-        try {
-            const card = CreditCard.create(
-                dto.cardNumber,
-                dto.cardHolderName,
-                dto.expirationMonth,
-                dto.expirationYear,
-                dto.cvv,
-            );
-
-            if (card.getType() === 'UNKNOWN') {
-                return Result.fail('Only VISA and MasterCard are accepted');
-            }
-
-            return Result.ok(card);
-        } catch (error) {
-            return Result.fail(`Invalid credit card: ${error.message}`);
-        }
-    }
-
-    private async handleSuccessfulPayment(
+    private async handleApprovedPayment(
         transaction: any,
         paymentResponse: any,
         dto: PaymentRequestDto,
         productName: string,
     ): Promise<Result<PaymentResultDto>> {
-        this.logger.log(`Payment approved: ${paymentResponse.transactionId}`);
+        this.logger.log(`Payment APPROVED: ${paymentResponse.transactionId}`);
 
-        // Actualizar transacción a APPROVED
-        transaction.approve(paymentResponse.transactionId, paymentResponse.status);
-        await this.transactionRepository.update(transaction);
-
-        // Actualizar stock
+        // Actualizar stock (solo si está aprobado)
         await this.updateStockUseCase.execute(dto.productId, dto.quantity);
 
         // Crear delivery
@@ -198,15 +191,42 @@ export class ProcessPaymentUseCase {
         return Result.ok(result);
     }
 
+    private async handlePendingPayment(
+        transaction: any,
+        paymentResponse: any,
+        productName: string,
+    ): Promise<Result<PaymentResultDto>> {
+        this.logger.log(`Payment PENDING: ${paymentResponse.transactionId} - Awaiting confirmation`);
+
+        // NO actualizar stock ni crear delivery hasta que se confirme
+        // La confirmación llegará via webhook de Wompi
+
+        const result: PaymentResultDto = {
+            success: true,
+            transactionNumber: transaction.getTransactionNumber(),
+            status: TransactionStatus.PENDING,
+            message: 'Payment is being processed. You will receive a confirmation soon.',
+            product: {
+                id: transaction['productId'],
+                name: productName,
+                updatedStock: 0, // No actualizar stock aún
+            },
+            createdAt: transaction['createdAt'],
+            processedAt: new Date(),
+        };
+
+        return Result.ok(result);
+    }
+
     private async handleFailedPayment(
         transaction: any,
         error: string,
     ): Promise<Result<PaymentResultDto>> {
         this.logger.warn(`Payment declined: ${error}`);
 
-        // Actualizar transacción a DECLINED
-        transaction.decline('N/A', 'DECLINED', error);
-        await this.transactionRepository.update(transaction);
+        // Ya no necesitamos llamar a decline() porque updateFromService() ya actualizó el estado
+        // transaction.decline('N/A', 'DECLINED', error);
+        // await this.transactionRepository.update(transaction);
 
         const result: PaymentResultDto = {
             success: false,

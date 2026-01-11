@@ -19,32 +19,13 @@ export class PaymentRequestDto {
     @Min(1)
     quantity: number;
 
-    // Información de tarjeta
+    // Token de tarjeta (generado en el frontend)
     @IsString()
     @IsNotEmpty()
-    @Length(13, 19)
-    @Matches(/^\d+$/, { message: 'Card number must contain only digits' })
-    cardNumber: string;
-
-    @IsString()
-    @IsNotEmpty()
-    @Length(3, 100)
-    cardHolderName: string;
-
-    @IsString()
-    @Length(2, 2)
-    @Matches(/^(0[1-9]|1[0-2])$/, { message: 'Invalid expiration month (01-12)' })
-    expirationMonth: string;
-
-    @IsString()
-    @Length(2, 2)
-    @Matches(/^\d{2}$/, { message: 'Invalid expiration year (YY format)' })
-    expirationYear: string;
-
-    @IsString()
-    @Length(3, 4)
-    @Matches(/^\d{3,4}$/, { message: 'CVV must be 3 or 4 digits' })
-    cvv: string;
+    @Matches(/^tok_(test|prod|stagtest)_\d+_[a-zA-Z0-9]+$/, {
+        message: 'Invalid card token format'
+    })
+    cardToken: string;
 
     // Información de entrega
     @IsEmail()

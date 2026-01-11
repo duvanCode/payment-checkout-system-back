@@ -85,6 +85,37 @@ export class Transaction {
         return this.status === TransactionStatus.APPROVED;
     }
 
+    /**
+     * Actualiza la transacción con el estado real de Wompi
+     * @param serviceTransactionId ID de la transacción en Wompi
+     * @param serviceStatus Estado de Wompi (PENDING, APPROVED, DECLINED, etc.)
+     */
+    updateFromService(serviceTransactionId: string, serviceStatus: string): void {
+        this.serviceTransactionId = serviceTransactionId;
+        this.serviceStatus = serviceStatus;
+        this.processedAt = new Date();
+        this.updatedAt = new Date();
+
+        // Mapear estado de Wompi a estado interno
+        const wompiStatus = serviceStatus.toUpperCase();
+        switch (wompiStatus) {
+            case 'APPROVED':
+                this.status = TransactionStatus.APPROVED;
+                break;
+            case 'DECLINED':
+            case 'VOIDED':
+                this.status = TransactionStatus.DECLINED;
+                break;
+            case 'ERROR':
+                this.status = TransactionStatus.ERROR;
+                break;
+            case 'PENDING':
+            default:
+                this.status = TransactionStatus.PENDING;
+                break;
+        }
+    }
+
     approve(serviceTransactionId: string, serviceStatus: string): void {
         this.status = TransactionStatus.APPROVED;
         this.serviceTransactionId = serviceTransactionId;
