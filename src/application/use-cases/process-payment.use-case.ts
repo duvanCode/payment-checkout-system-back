@@ -79,7 +79,7 @@ export class ProcessPaymentUseCase {
             const transaction = transactionResult.getValue();
             this.logger.log(`Transaction created: ${transaction.getTransactionNumber()}`);
 
-            // PASO 3: Procesar pago con Wompi (usando token generado en el frontend)
+            // PASO 3: Procesar pago con Service (usando token generado en el frontend)
             const paymentResult = await this.paymentGateway.processPayment({
                 amount: summary.total,
                 currency: 'COP',
@@ -92,17 +92,17 @@ export class ProcessPaymentUseCase {
             if (paymentResult.isSuccess) {
                 const paymentResponse = paymentResult.getValue();
 
-                // Actualizar transacción con el estado real de Wompi
+                // Actualizar transacción con el estado real de Service
                 transaction.updateFromService(
                     paymentResponse.transactionId,
                     paymentResponse.status
                 );
                 await this.transactionRepository.update(transaction);
 
-                // Procesar según el estado de Wompi
-                const wompiStatus = paymentResponse.status.toUpperCase();
+                // Procesar según el estado de Service
+                const ServiceStatus = paymentResponse.status.toUpperCase();
 
-                if (wompiStatus === 'APPROVED') {
+                if (ServiceStatus === 'APPROVED') {
                     // Solo procesar delivery y stock si está aprobado
                     return await this.handleApprovedPayment(
                         transaction,
@@ -110,7 +110,7 @@ export class ProcessPaymentUseCase {
                         dto,
                         summary.productName,
                     );
-                } else if (wompiStatus === 'PENDING') {
+                } else if (ServiceStatus === 'PENDING') {
                     // Transacción pendiente - esperar confirmación via webhook
                     return await this.handlePendingPayment(
                         transaction,
@@ -121,7 +121,7 @@ export class ProcessPaymentUseCase {
                     // Transacción rechazada o error
                     return await this.handleFailedPayment(
                         transaction,
-                        paymentResponse.statusMessage || `Transaction ${wompiStatus}`,
+                        paymentResponse.statusMessage || `Transaction ${ServiceStatus}`,
                     );
                 }
             } else {
@@ -199,7 +199,7 @@ export class ProcessPaymentUseCase {
         this.logger.log(`Payment PENDING: ${paymentResponse.transactionId} - Awaiting confirmation`);
 
         // NO actualizar stock ni crear delivery hasta que se confirme
-        // La confirmación llegará via webhook de Wompi
+        // La confirmación llegará via webhook de Service
 
         const result: PaymentResultDto = {
             success: true,

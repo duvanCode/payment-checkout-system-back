@@ -86,9 +86,9 @@ export class Transaction {
     }
 
     /**
-     * Actualiza la transacción con el estado real de Wompi
-     * @param serviceTransactionId ID de la transacción en Wompi
-     * @param serviceStatus Estado de Wompi (PENDING, APPROVED, DECLINED, etc.)
+     * Actualiza la transacción con el estado real de Service
+     * @param serviceTransactionId ID de la transacción en Service
+     * @param serviceStatus Estado de Service (PENDING, APPROVED, DECLINED, etc.)
      */
     updateFromService(serviceTransactionId: string, serviceStatus: string): void {
         this.serviceTransactionId = serviceTransactionId;
@@ -96,9 +96,9 @@ export class Transaction {
         this.processedAt = new Date();
         this.updatedAt = new Date();
 
-        // Mapear estado de Wompi a estado interno
-        const wompiStatus = serviceStatus.toUpperCase();
-        switch (wompiStatus) {
+        // Mapear estado de Service a estado interno
+        const ServiceStatus = serviceStatus.toUpperCase();
+        switch (ServiceStatus) {
             case 'APPROVED':
                 this.status = TransactionStatus.APPROVED;
                 break;

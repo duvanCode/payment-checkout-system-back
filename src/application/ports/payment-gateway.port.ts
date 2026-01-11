@@ -5,7 +5,7 @@ export interface PaymentRequest {
     currency: string;
     reference: string;
     customerEmail: string;
-    cardToken: string; // Token generado en el frontend usando Wompi
+    cardToken: string; // Token generado en el frontend usando Service
 }
 
 export interface PaymentResponse {

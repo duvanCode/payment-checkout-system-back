@@ -206,7 +206,6 @@ export class ServiceAdapter implements PaymentGatewayPort {
 
     private generateIntegritySignature(reference: string, amountInCents: number, currency: string): string {
         // La firma de integridad se calcula como: reference + amountInCents + currency + integritySecret
-        // Según documentación de Wompi: https://docs.wompi.co/docs/colombia/widget-checkout-web/
         const data = `${reference}${amountInCents}${currency}${this.integritySecret}`;
         return crypto.createHash('sha256').update(data).digest('hex');
     }
