@@ -64,6 +64,27 @@ export class PrismaTransactionRepository implements TransactionRepositoryPort {
         }
     }
 
+    async findPendingTransactions(): Promise<Result<Transaction[]>> {
+        try {
+            const transactions = await this.prisma.transaction.findMany({
+                where: {
+                    status: TransactionStatus.PENDING,
+                    serviceTransactionId: {
+                        not: null,
+                    },
+                },
+                orderBy: {
+                    createdAt: 'asc',
+                },
+            });
+
+            const domainTransactions = transactions.map(t => this.toDomain(t));
+            return Result.ok(domainTransactions);
+        } catch (error) {
+            return Result.fail(`Error finding pending transactions: ${error.message}`);
+        }
+    }
+
     async update(transaction: Transaction): Promise<Result<Transaction>> {
         try {
             const data = transaction.toJSON();

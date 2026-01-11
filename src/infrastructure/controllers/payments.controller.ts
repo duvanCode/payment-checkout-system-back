@@ -9,14 +9,17 @@ import {
 } from '@nestjs/common';
 import { CalculateSummaryUseCase } from '../../application/use-cases/calculate-summary.use-case';
 import { ProcessPaymentUseCase } from '../../application/use-cases/process-payment.use-case';
+import { GetTransactionStatusUseCase } from '../../application/use-cases/get-transaction-status.use-case';
 import { CalculateSummaryDto } from '../../application/dtos/order-summary.dto';
 import { PaymentRequestDto } from '../../application/dtos/payment-request.dto';
+import { GetTransactionStatusDto } from '../../application/dtos/transaction-status.dto';
 
 @Controller('api/payments')
 export class PaymentsController {
     constructor(
         private readonly calculateSummaryUseCase: CalculateSummaryUseCase,
         private readonly processPaymentUseCase: ProcessPaymentUseCase,
+        private readonly getTransactionStatusUseCase: GetTransactionStatusUseCase,
     ) { }
 
     @Post('calculate')
@@ -72,6 +75,29 @@ export class PaymentsController {
             statusCode: HttpStatus.OK,
             message: 'Payment processed successfully',
             data: paymentResult,
+        };
+    }
+
+    @Post('status')
+    @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
+    async getTransactionStatus(@Body() dto: GetTransactionStatusDto) {
+        const result = await this.getTransactionStatusUseCase.execute(dto.transactionNumber);
+
+        if (result.isFailure) {
+            throw new HttpException(
+                {
+                    statusCode: HttpStatus.NOT_FOUND,
+                    message: result.getError(),
+                    error: 'TransactionNotFound',
+                },
+                HttpStatus.NOT_FOUND,
+            );
+        }
+
+        return {
+            statusCode: HttpStatus.OK,
+            message: 'Transaction status retrieved successfully',
+            data: result.getValue(),
         };
     }
 }

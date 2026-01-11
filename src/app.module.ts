@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import serviceConfig from './infrastructure/config/service.config';
 
 // Database
@@ -25,11 +26,15 @@ import { CalculateSummaryUseCase } from './application/use-cases/calculate-summa
 import { CreateTransactionUseCase } from './application/use-cases/create-transaction.use-case';
 import { ProcessPaymentUseCase } from './application/use-cases/process-payment.use-case';
 import { UpdateStockUseCase } from './application/use-cases/update-stock.use-case';
+import { GetTransactionStatusUseCase } from './application/use-cases/get-transaction-status.use-case';
 
 // Controllers
 import { ProductsController } from './infrastructure/controllers/products.controller';
 import { PaymentsController } from './infrastructure/controllers/payments.controller';
 import { WebhooksController } from './infrastructure/controllers/webhooks.controller';
+
+// Jobs
+import { TransactionSyncService } from './infrastructure/jobs/transaction-sync.service';
 
 @Module({
   imports: [
@@ -37,6 +42,7 @@ import { WebhooksController } from './infrastructure/controllers/webhooks.contro
       isGlobal: true,
       load: [serviceConfig],
     }),
+    ScheduleModule.forRoot(),
   ],
   controllers: [
     ProductsController,
@@ -77,6 +83,10 @@ import { WebhooksController } from './infrastructure/controllers/webhooks.contro
     CreateTransactionUseCase,
     ProcessPaymentUseCase,
     UpdateStockUseCase,
+    GetTransactionStatusUseCase,
+
+    // Jobs
+    TransactionSyncService,
   ],
 })
 export class AppModule { }

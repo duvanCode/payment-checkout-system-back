@@ -4,6 +4,7 @@ import { Result } from '../../shared/result';
 export interface TransactionRepositoryPort {
     findById(id: string): Promise<Result<Transaction>>;
     findByTransactionNumber(transactionNumber: string): Promise<Result<Transaction>>;
+    findPendingTransactions(): Promise<Result<Transaction[]>>;
     save(transaction: Transaction): Promise<Result<Transaction>>;
     update(transaction: Transaction): Promise<Result<Transaction>>;
 }
