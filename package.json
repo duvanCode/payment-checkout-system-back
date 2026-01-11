@@ -22,6 +22,7 @@
     "docker:down": "docker-compose down",
     "docker:logs": "docker-compose logs -f",
     "docker:prisma:migrate": "docker-compose exec app npx prisma migrate dev",
+    "docker:prisma:generate": "docker-compose exec app npx prisma generate",
     "docker:prisma:studio": "docker-compose exec app npx prisma studio",
     "docker:rebuild": "docker-compose down && docker-compose build --no-cache && docker-compose up -d",
     "prisma:migrate": "prisma migrate dev",
