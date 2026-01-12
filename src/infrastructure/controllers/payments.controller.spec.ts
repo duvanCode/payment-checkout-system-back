@@ -103,9 +103,11 @@ describe('PaymentsController', () => {
                 transactionNumber: 'TRANS-001',
                 status: 'APPROVED',
                 message: 'Payment approved',
-            };
+                createdAt: new Date(),
+            } as any;
 
             mockProcessPaymentUseCase.execute.mockResolvedValue(Result.ok(mockPaymentResult));
+
 
             const result = await controller.processPayment(dto);
 
@@ -120,11 +122,14 @@ describe('PaymentsController', () => {
             const mockPaymentResult = {
                 success: false,
                 transactionId: 'tx-123',
+                transactionNumber: 'TRANS-001',
                 status: 'DECLINED',
                 message: 'Insufficient funds',
-            };
+                createdAt: new Date(),
+            } as any;
 
             mockProcessPaymentUseCase.execute.mockResolvedValue(Result.ok(mockPaymentResult));
+
 
             const result = await controller.processPayment(dto);
 
@@ -160,11 +165,17 @@ describe('PaymentsController', () => {
             const mockStatus = {
                 transactionNumber: 'TRANS-001',
                 status: 'APPROVED',
+                internalStatus: 'APPROVED',
                 amount: 1000,
+                total: 1000,
+                productId: 'prod-123',
+                quantity: 1,
+                createdAt: new Date(),
                 updatedAt: new Date(),
-            };
+            } as any;
 
             mockGetTransactionStatusUseCase.execute.mockResolvedValue(Result.ok(mockStatus));
+
 
             const result = await controller.getTransactionStatus(dto);
 

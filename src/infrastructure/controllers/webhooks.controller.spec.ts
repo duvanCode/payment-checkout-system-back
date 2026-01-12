@@ -142,6 +142,7 @@ describe('WebhooksController', () => {
 
         it('should throw NOT_FOUND when transaction does not exist', async () => {
             mockTransactionRepository.findByTransactionNumber.mockResolvedValue(Result.fail('Not found'));
+            jest.spyOn((controller as any).logger, 'warn').mockImplementation(() => { });
 
             await expect(controller.handleserviceWebhook(webhookDto)).rejects.toThrow(HttpException);
 
@@ -154,6 +155,7 @@ describe('WebhooksController', () => {
 
         it('should handle errors during processing and return INTERNAL_SERVER_ERROR', async () => {
             mockTransactionRepository.findByTransactionNumber.mockRejectedValue(new Error('Unexpected error'));
+            jest.spyOn((controller as any).logger, 'error').mockImplementation(() => { });
 
             await expect(controller.handleserviceWebhook(webhookDto)).rejects.toThrow(HttpException);
 
