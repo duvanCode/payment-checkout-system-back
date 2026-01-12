@@ -7,13 +7,17 @@ import {
     ValidationPipe,
     UsePipes,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { CalculateSummaryUseCase } from '../../application/use-cases/calculate-summary.use-case';
 import { ProcessPaymentUseCase } from '../../application/use-cases/process-payment.use-case';
 import { GetTransactionStatusUseCase } from '../../application/use-cases/get-transaction-status.use-case';
-import { CalculateSummaryDto } from '../../application/dtos/order-summary.dto';
+import { CalculateSummaryDto, OrderSummaryDto } from '../../application/dtos/order-summary.dto';
 import { PaymentRequestDto } from '../../application/dtos/payment-request.dto';
+import { PaymentResultDto } from '../../application/dtos/payment-result.dto';
 import { GetTransactionStatusDto } from '../../application/dtos/transaction-status.dto';
+import { TransactionResponseDto } from '../../application/dtos/transaction-response.dto';
 
+@ApiTags('Payments')
 @Controller('api/payments')
 export class PaymentsController {
     constructor(
@@ -24,6 +28,13 @@ export class PaymentsController {
 
     @Post('calculate')
     @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
+    @ApiOperation({ summary: 'Calculate order summary including fees' })
+    @ApiResponse({
+        status: 200,
+        description: 'Order summary calculated successfully',
+        type: OrderSummaryDto
+    })
+    @ApiResponse({ status: 400, description: 'Bad request' })
     async calculateSummary(@Body() dto: CalculateSummaryDto) {
         const result = await this.calculateSummaryUseCase.execute(dto);
 
@@ -47,6 +58,13 @@ export class PaymentsController {
 
     @Post('process')
     @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
+    @ApiOperation({ summary: 'Process a payment transaction' })
+    @ApiResponse({
+        status: 200,
+        description: 'Payment processed successfully',
+        type: PaymentResultDto
+    })
+    @ApiResponse({ status: 402, description: 'Payment failed' })
     async processPayment(@Body() dto: PaymentRequestDto) {
         const result = await this.processPaymentUseCase.execute(dto);
 
@@ -80,6 +98,13 @@ export class PaymentsController {
 
     @Post('status')
     @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
+    @ApiOperation({ summary: 'Get the status of a transaction' })
+    @ApiResponse({
+        status: 200,
+        description: 'Transaction status retrieved successfully',
+        type: TransactionResponseDto
+    })
+    @ApiResponse({ status: 404, description: 'Transaction not found' })
     async getTransactionStatus(@Body() dto: GetTransactionStatusDto) {
         const result = await this.getTransactionStatusUseCase.execute(dto.transactionNumber);
 

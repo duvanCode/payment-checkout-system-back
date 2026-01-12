@@ -7,6 +7,7 @@ import {
     Logger,
     Inject,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ServiceWebhookDto } from '../../application/dtos/service-webhook.dto';
 import {
     type TransactionRepositoryPort,
@@ -20,6 +21,7 @@ import { UpdateStockUseCase } from '../../application/use-cases/update-stock.use
 import { Delivery } from '../../domain/entities/delivery.entity';
 import { TransactionStatus } from '../../domain/enums/transaction-status.enum';
 
+@ApiTags('Webhooks')
 @Controller('api/webhooks')
 export class WebhooksController {
     private readonly logger = new Logger(WebhooksController.name);
@@ -33,6 +35,9 @@ export class WebhooksController {
     ) { }
 
     @Post('service')
+    @ApiOperation({ summary: 'Handle Wompi service webhooks for transaction updates' })
+    @ApiResponse({ status: 200, description: 'Webhook processed successfully' })
+    @ApiResponse({ status: 404, description: 'Transaction not found' })
     async handleserviceWebhook(@Body() webhook: ServiceWebhookDto) {
         try {
             this.logger.log(`Received service webhook: ${webhook.event}`);
