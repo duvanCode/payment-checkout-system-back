@@ -110,23 +110,24 @@ erDiagram
     cp .env.example .env
     ```
 
-3.  **Levantar servicios con Docker:**
+3.  **Levantar el entorno completo con Docker:**
+    Este comando instalará dependencias, generará el cliente de Prisma, aplicará migraciones y cargará las semillas automáticamente.
     ```bash
-    docker-compose up -d
+    npm run docker:up
     ```
 
-4.  **Ejecutar migraciones y seeds:**
-    ```bash
-    npm run prisma:migrate
-    npm run prisma:seed
-    ```
+## 📖 Documentación de la API (Swagger)
+Una vez que el servidor esté corriendo, puedes explorar y probar todos los endpoints desde la interfaz interactiva de Swagger:
+🔗 [http://localhost:3000/api](http://localhost:3000/api)
 
 ## 🔌 API Endpoints
 | Método | Endpoint | Descripción |
 | :--- | :--- | :--- |
-| `GET` | `/products` | Obtiene la lista de productos disponibles. |
-| `POST` | `/payments/transaction` | Inicia una nueva transacción de pago. |
-| `GET` | `/payments/transaction/:id` | Consulta el estado de una transacción. |
+| `GET` | `/api/products` | Obtiene la lista de productos disponibles. |
+| `POST` | `/api/payments/calculate` | Calcula el resumen de la orden con impuestos y envíos. |
+| `POST` | `/api/payments/process` | Procesa una transacción de pago completa. |
+| `POST` | `/api/payments/status` | Consulta el estado de una transacción. |
+| `POST` | `/api/webhooks/service` | Endpoint para notificaciones asíncronas de la pasarela. |
 
 ## 🧪 Testing
 El proyecto mantiene un alto estándar de calidad con pruebas automatizadas.
