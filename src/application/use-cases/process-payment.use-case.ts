@@ -4,14 +4,6 @@ import {
     TRANSACTION_REPOSITORY,
 } from '../ports/transaction.repository.port';
 import {
-    type DeliveryRepositoryPort,
-    DELIVERY_REPOSITORY,
-} from '../ports/delivery.repository.port';
-import {
-    type ProductRepositoryPort,
-    PRODUCT_REPOSITORY,
-} from '../ports/product.repository.port';
-import {
     type PaymentGatewayPort,
     PAYMENT_GATEWAY,
 } from '../ports/payment-gateway.port';
@@ -19,9 +11,7 @@ import { PaymentRequestDto } from '../dtos/payment-request.dto';
 import { PaymentResultDto } from '../dtos/payment-result.dto';
 import { Result } from '../../shared/result';
 import { CreateTransactionUseCase } from './create-transaction.use-case';
-import { UpdateStockUseCase } from './update-stock.use-case';
 import { CalculateSummaryUseCase } from './calculate-summary.use-case';
-import { Delivery } from '../../domain/entities/delivery.entity';
 import { TransactionStatus } from '../../domain/enums/transaction-status.enum';
 
 @Injectable()
@@ -31,15 +21,10 @@ export class ProcessPaymentUseCase {
     constructor(
         @Inject(TRANSACTION_REPOSITORY)
         private readonly transactionRepository: TransactionRepositoryPort,
-        @Inject(DELIVERY_REPOSITORY)
-        private readonly deliveryRepository: DeliveryRepositoryPort,
-        @Inject(PRODUCT_REPOSITORY)
-        private readonly productRepository: ProductRepositoryPort,
         @Inject(PAYMENT_GATEWAY)
         private readonly paymentGateway: PaymentGatewayPort,
         private readonly calculateSummaryUseCase: CalculateSummaryUseCase,
         private readonly createTransactionUseCase: CreateTransactionUseCase,
-        private readonly updateStockUseCase: UpdateStockUseCase,
     ) { }
 
     async execute(dto: PaymentRequestDto): Promise<Result<PaymentResultDto>> {
@@ -79,7 +64,7 @@ export class ProcessPaymentUseCase {
             const transaction = transactionResult.getValue();
             this.logger.log(`Transaction created: ${transaction.getTransactionNumber()}`);
 
-            // PASO 3: Procesar pago con Service (usando token generado en el frontend)
+            // PASO 3: Enviar pago a Wompi (usando token generado en el frontend)
             const paymentResult = await this.paymentGateway.processPayment({
                 amount: summary.total,
                 currency: 'COP',
@@ -88,47 +73,54 @@ export class ProcessPaymentUseCase {
                 cardToken: dto.cardToken,
             });
 
-            // PASO 4: Procesar resultado del pago
+            // PASO 4: Actualizar transacción con ID de Wompi y devolver respuesta
             if (paymentResult.isSuccess) {
                 const paymentResponse = paymentResult.getValue();
 
-                // Actualizar transacción con el estado real de Service
+                this.logger.log(`Payment sent to Wompi - Transaction ID: ${paymentResponse.transactionId}, Status: ${paymentResponse.status}`);
+
+                // Actualizar transacción con el ID y estado de Wompi
                 transaction.updateFromService(
                     paymentResponse.transactionId,
                     paymentResponse.status
                 );
                 await this.transactionRepository.update(transaction);
 
-                // Procesar según el estado de Service
-                const ServiceStatus = paymentResponse.status.toUpperCase();
+                // Devolver respuesta con el estado actual
+                // El job se encargará de sincronizar y procesar stock/delivery
+                const result: PaymentResultDto = {
+                    success: true,
+                    transactionNumber: transaction.getTransactionNumber(),
+                    status: transaction.getStatus(),
+                    message: this.getMessageForStatus(transaction.getStatus()),
+                    product: {
+                        id: transaction['productId'],
+                        name: summary.productName,
+                        updatedStock: 0, // El stock se actualizará cuando el job procese la transacción aprobada
+                    },
+                    createdAt: transaction['createdAt'],
+                    processedAt: new Date(),
+                };
 
-                if (ServiceStatus === 'APPROVED') {
-                    // Solo procesar delivery y stock si está aprobado
-                    return await this.handleApprovedPayment(
-                        transaction,
-                        paymentResponse,
-                        dto,
-                        summary.productName,
-                    );
-                } else if (ServiceStatus === 'PENDING') {
-                    // Transacción pendiente - esperar confirmación via webhook
-                    return await this.handlePendingPayment(
-                        transaction,
-                        paymentResponse,
-                        summary.productName,
-                    );
-                } else {
-                    // Transacción rechazada o error
-                    return await this.handleFailedPayment(
-                        transaction,
-                        paymentResponse.statusMessage || `Transaction ${ServiceStatus}`,
-                    );
-                }
+                return Result.ok(result);
             } else {
-                return await this.handleFailedPayment(
-                    transaction,
-                    paymentResult.getError(),
-                );
+                // Error al comunicarse con Wompi
+                this.logger.error(`Payment gateway error: ${paymentResult.getError()}`);
+
+                const result: PaymentResultDto = {
+                    success: false,
+                    transactionNumber: transaction.getTransactionNumber(),
+                    status: TransactionStatus.ERROR,
+                    message: 'Payment processing failed',
+                    error: {
+                        code: 'PAYMENT_GATEWAY_ERROR',
+                        message: paymentResult.getError(),
+                    },
+                    createdAt: transaction['createdAt'],
+                    processedAt: new Date(),
+                };
+
+                return Result.ok(result);
             }
         } catch (error) {
             this.logger.error(`Error processing payment: ${error.message}`, error.stack);
@@ -136,111 +128,18 @@ export class ProcessPaymentUseCase {
         }
     }
 
-    private async handleApprovedPayment(
-        transaction: any,
-        paymentResponse: any,
-        dto: PaymentRequestDto,
-        productName: string,
-    ): Promise<Result<PaymentResultDto>> {
-        this.logger.log(`Payment APPROVED: ${paymentResponse.transactionId}`);
-
-        // Actualizar stock (solo si está aprobado)
-        await this.updateStockUseCase.execute(dto.productId, dto.quantity);
-
-        // Crear delivery
-        const delivery = new Delivery(
-            undefined,
-            transaction.getId(),
-            dto.deliveryAddress,
-            dto.deliveryCity,
-            dto.deliveryDepartment,
-            Delivery.generateTrackingNumber(),
-            Delivery.calculateEstimatedDelivery(dto.deliveryCity),
-            new Date(),
-            new Date(),
-        );
-
-        await this.deliveryRepository.save(delivery);
-
-        // Obtener stock actualizado
-        const productResult = await this.productRepository.findById(dto.productId);
-        const updatedStock = productResult.isSuccess
-            ? productResult.getValue().getStock()
-            : 0;
-
-        const result: PaymentResultDto = {
-            success: true,
-            transactionNumber: transaction.getTransactionNumber(),
-            status: TransactionStatus.APPROVED,
-            message: 'Payment processed successfully',
-            delivery: {
-                trackingNumber: delivery.getTrackingNumber(),
-                estimatedDeliveryDate: delivery.getEstimatedDeliveryDate(),
-                address: dto.deliveryAddress,
-                city: dto.deliveryCity,
-            },
-            product: {
-                id: dto.productId,
-                name: productName,
-                updatedStock,
-            },
-            createdAt: transaction['createdAt'],
-            processedAt: new Date(),
-        };
-
-        return Result.ok(result);
-    }
-
-    private async handlePendingPayment(
-        transaction: any,
-        paymentResponse: any,
-        productName: string,
-    ): Promise<Result<PaymentResultDto>> {
-        this.logger.log(`Payment PENDING: ${paymentResponse.transactionId} - Awaiting confirmation`);
-
-        // NO actualizar stock ni crear delivery hasta que se confirme
-        // La confirmación llegará via webhook de Service
-
-        const result: PaymentResultDto = {
-            success: true,
-            transactionNumber: transaction.getTransactionNumber(),
-            status: TransactionStatus.PENDING,
-            message: 'Payment is being processed. You will receive a confirmation soon.',
-            product: {
-                id: transaction['productId'],
-                name: productName,
-                updatedStock: 0, // No actualizar stock aún
-            },
-            createdAt: transaction['createdAt'],
-            processedAt: new Date(),
-        };
-
-        return Result.ok(result);
-    }
-
-    private async handleFailedPayment(
-        transaction: any,
-        error: string,
-    ): Promise<Result<PaymentResultDto>> {
-        this.logger.warn(`Payment declined: ${error}`);
-
-        // Ya no necesitamos llamar a decline() porque updateFromService() ya actualizó el estado
-        // transaction.decline('N/A', 'DECLINED', error);
-        // await this.transactionRepository.update(transaction);
-
-        const result: PaymentResultDto = {
-            success: false,
-            transactionNumber: transaction.getTransactionNumber(),
-            status: TransactionStatus.DECLINED,
-            message: 'Payment was declined',
-            error: {
-                code: 'PAYMENT_DECLINED',
-                message: error,
-            },
-            createdAt: transaction['createdAt'],
-            processedAt: new Date(),
-        };
-
-        return Result.ok(result);
+    private getMessageForStatus(status: TransactionStatus): string {
+        switch (status) {
+            case TransactionStatus.PENDING:
+                return 'Payment is being processed. You will receive a confirmation soon.';
+            case TransactionStatus.APPROVED:
+                return 'Payment approved. Processing your order.';
+            case TransactionStatus.DECLINED:
+                return 'Payment was declined.';
+            case TransactionStatus.ERROR:
+                return 'Payment processing failed.';
+            default:
+                return 'Payment status unknown.';
+        }
     }
 }

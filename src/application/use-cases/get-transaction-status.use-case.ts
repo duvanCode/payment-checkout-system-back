@@ -51,15 +51,6 @@ export class GetTransactionStatusUseCase {
             if (serviceResult.isSuccess) {
                 const serviceTransaction = serviceResult.getValue();
                 latestServiceStatus = serviceTransaction.status;
-
-                // Si el estado cambió, actualizar en la base de datos
-                if (serviceTransaction.status !== transactionData.serviceStatus) {
-                    transaction.updateFromService(
-                        serviceTransaction.transactionId,
-                        serviceTransaction.status,
-                    );
-                    await this.transactionRepository.update(transaction);
-                }
             }
         }
 
