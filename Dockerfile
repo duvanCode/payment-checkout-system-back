@@ -6,17 +6,21 @@ WORKDIR /app
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# Instalar dependencias
+# Instalar dependencias iniciales
 RUN npm install
 
 # Copiar el resto del código
 COPY . .
 
-# Generar Prisma Client
-RUN npx prisma generate
+# Copiar script de entrada y dar permisos
+COPY docker-entrypoint.sh ./
+RUN chmod +x docker-entrypoint.sh
 
 # Exponer puerto
 EXPOSE 3000
 
-# Comando por defecto
+# Usar el script como entrypoint
+ENTRYPOINT ["./docker-entrypoint.sh"]
+
+# Comando por defecto (pasado como argumento al entrypoint)
 CMD ["npm", "run", "start:dev"]

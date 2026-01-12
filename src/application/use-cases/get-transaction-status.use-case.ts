@@ -26,7 +26,7 @@ export class GetTransactionStatusUseCase {
         private readonly transactionRepository: TransactionRepositoryPort,
         @Inject(PAYMENT_GATEWAY)
         private readonly paymentGateway: PaymentGatewayPort,
-    ) {}
+    ) { }
 
     async execute(transactionNumber: string): Promise<Result<TransactionStatusResponse>> {
         // Buscar la transacción en la base de datos
@@ -41,7 +41,6 @@ export class GetTransactionStatusUseCase {
         const transaction = transactionResult.getValue();
         const transactionData = transaction.toJSON();
 
-        // Si tiene serviceTransactionId, consultar el estado actual en Wompi
         let latestServiceStatus = transactionData.serviceStatus;
         if (transactionData.serviceTransactionId) {
             const serviceResult = await this.paymentGateway.getTransaction(

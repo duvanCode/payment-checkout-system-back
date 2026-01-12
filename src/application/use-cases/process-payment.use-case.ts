@@ -64,7 +64,6 @@ export class ProcessPaymentUseCase {
             const transaction = transactionResult.getValue();
             this.logger.log(`Transaction created: ${transaction.getTransactionNumber()}`);
 
-            // PASO 3: Enviar pago a Wompi (usando token generado en el frontend)
             const paymentResult = await this.paymentGateway.processPayment({
                 amount: summary.total,
                 currency: 'COP',
@@ -73,13 +72,11 @@ export class ProcessPaymentUseCase {
                 cardToken: dto.cardToken,
             });
 
-            // PASO 4: Actualizar transacción con ID de Wompi y devolver respuesta
             if (paymentResult.isSuccess) {
                 const paymentResponse = paymentResult.getValue();
 
-                this.logger.log(`Payment sent to Wompi - Transaction ID: ${paymentResponse.transactionId}, Status: ${paymentResponse.status}`);
+                this.logger.log(`Payment sent - Transaction ID: ${paymentResponse.transactionId}, Status: ${paymentResponse.status}`);
 
-                // Actualizar transacción con el ID y estado de Wompi
                 transaction.updateFromService(
                     paymentResponse.transactionId,
                     paymentResponse.status
@@ -104,7 +101,6 @@ export class ProcessPaymentUseCase {
 
                 return Result.ok(result);
             } else {
-                // Error al comunicarse con Wompi
                 this.logger.error(`Payment gateway error: ${paymentResult.getError()}`);
 
                 const result: PaymentResultDto = {
