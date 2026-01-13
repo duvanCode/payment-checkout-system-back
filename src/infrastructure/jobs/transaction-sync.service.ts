@@ -158,9 +158,16 @@ export class TransactionSyncService implements OnModuleInit {
         const updatedTransaction = updateResult.getValue();
         this.logger.log(`   Updated Transaction Status: ${updatedTransaction.getStatus()}`);
 
+        console.log('🔍 [SYNC JOB] Checking if transaction is approved');
+        console.log('🔍 [SYNC JOB] Transaction status:', updatedTransaction.getStatus());
+        console.log('🔍 [SYNC JOB] isApproved():', updatedTransaction.isApproved());
+
         // Si la transacción fue aprobada, procesar el delivery y actualizar stock
         if (updatedTransaction.isApproved()) {
+            console.log('✅ [SYNC JOB] Transaction is APPROVED, processing stock update and delivery');
             await this.processApprovedTransaction(updatedTransaction);
+        } else {
+            console.log('⏭️  [SYNC JOB] Transaction is NOT approved, skipping stock update');
         }
 
         this.logger.log(`✅ Transaction ${transaction.getTransactionNumber()} synced successfully`);
@@ -181,21 +188,31 @@ export class TransactionSyncService implements OnModuleInit {
             return;
         }
 
-        // Actualizar stock
+        // Actualizar stock for each item
         try {
-            const stockResult = await this.updateStockUseCase.execute(
-                transactionData.productId,
-                transactionData.quantity,
-            );
+            const items = transaction.getItems();
+            console.log('📦 [SYNC JOB] Transaction has', items.length, 'items to process');
 
-            if (stockResult.isFailure) {
-                this.logger.error(
-                    `Failed to update stock for transaction ${transaction.getTransactionNumber()}: ${stockResult.getError()}`,
+            for (const item of items) {
+                console.log('📦 [SYNC JOB] Processing item - ProductID:', item.getProductId(), 'Quantity:', item.getQuantity());
+
+                const stockResult = await this.updateStockUseCase.execute(
+                    item.getProductId(),
+                    item.getQuantity(),
                 );
-                return;
+
+                if (stockResult.isFailure) {
+                    console.error('❌ [SYNC JOB] Stock update FAILED:', stockResult.getError());
+                    this.logger.error(
+                        `Failed to update stock for product ${item.getProductId()} in transaction ${transaction.getTransactionNumber()}: ${stockResult.getError()}`,
+                    );
+                    // Continuar con los demás productos incluso si uno falla
+                } else {
+                    console.log('✅ [SYNC JOB] Stock updated successfully for product:', item.getProductId());
+                    this.logger.log(`   ✅ Stock updated for product ${item.getProductId()}`);
+                }
             }
 
-            this.logger.log(`   ✅ Stock updated for product ${transactionData.productId}`);
         } catch (error) {
             this.logger.error(
                 `Error updating stock: ${error.message}`,

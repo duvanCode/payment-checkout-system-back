@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { TransactionRepositoryPort } from '../../application/ports/transaction.repository.port';
 import { Transaction } from '../../domain/entities/transaction.entity';
+import { TransactionItem } from '../../domain/entities/transaction-item.entity';
 import { TransactionStatus } from '../../domain/enums/transaction-status.enum';
 import { Money } from '../../domain/value-objects/money.vo';
 import { Result } from '../../shared/result';
@@ -14,6 +15,7 @@ export class PrismaTransactionRepository implements TransactionRepositoryPort {
         try {
             const transaction = await this.prisma.transaction.findUnique({
                 where: { id },
+                include: { items: true },
             });
 
             if (!transaction) {
@@ -30,6 +32,7 @@ export class PrismaTransactionRepository implements TransactionRepositoryPort {
         try {
             const transaction = await this.prisma.transaction.findUnique({
                 where: { transactionNumber },
+                include: { items: true },
             });
 
             if (!transaction) {
@@ -48,14 +51,23 @@ export class PrismaTransactionRepository implements TransactionRepositoryPort {
                 data: {
                     transactionNumber: transaction.getTransactionNumber(),
                     status: transaction.getStatus(),
-                    productId: transaction['productId'],
                     customerId: transaction['customerId'],
-                    quantity: transaction['quantity'],
                     subtotal: transaction['subtotal'].getAmount(),
                     baseFee: transaction['baseFee'].getAmount(),
                     deliveryFee: transaction['deliveryFee'].getAmount(),
                     total: transaction.getTotal().getAmount(),
+                    items: {
+                        create: transaction.getItems().map(item => ({
+                            productId: item.getProductId(),
+                            productName: item.getProductName(),
+                            quantity: item.getQuantity(),
+                            price: item.getPrice().getAmount(),
+                            subtotal: item.getSubtotal().getAmount(),
+                        })),
+
+                    },
                 },
+                include: { items: true },
             });
 
             return Result.ok(this.toDomain(created));
@@ -63,6 +75,7 @@ export class PrismaTransactionRepository implements TransactionRepositoryPort {
             return Result.fail(`Error saving transaction: ${error.message}`);
         }
     }
+
 
     async findPendingTransactions(): Promise<Result<Transaction[]>> {
         try {
@@ -76,6 +89,7 @@ export class PrismaTransactionRepository implements TransactionRepositoryPort {
                 orderBy: {
                     createdAt: 'asc',
                 },
+                include: { items: true },
             });
 
             const domainTransactions = transactions.map(t => this.toDomain(t));
@@ -99,6 +113,7 @@ export class PrismaTransactionRepository implements TransactionRepositoryPort {
                     processedAt: data.processedAt,
                     updatedAt: new Date(),
                 },
+                include: { items: true },
             });
 
             return Result.ok(this.toDomain(updated));
@@ -108,17 +123,30 @@ export class PrismaTransactionRepository implements TransactionRepositoryPort {
     }
 
     private toDomain(raw: any): Transaction {
+        const items = (raw.items || []).map(
+            (item: any) =>
+                new TransactionItem(
+                    item.id,
+                    item.transactionId,
+                    item.productId,
+                    item.productName,
+                    item.quantity,
+                    Money.from(Number(item.price), 'COP'),
+                    Money.from(Number(item.subtotal), 'COP'),
+                    item.createdAt,
+                ),
+        );
+
         return new Transaction(
             raw.id,
             raw.transactionNumber,
             raw.status as TransactionStatus,
-            raw.productId,
             raw.customerId,
-            raw.quantity,
             Money.from(Number(raw.subtotal)),
             Money.from(Number(raw.baseFee)),
             Money.from(Number(raw.deliveryFee)),
             Money.from(Number(raw.total)),
+            items,
             raw.createdAt,
             raw.updatedAt,
             raw.serviceTransactionId,

@@ -13,9 +13,11 @@ describe('CalculateSummaryUseCase', () => {
         mockProductRepository = {
             findById: jest.fn(),
             findAll: jest.fn(),
+            findAllWithStock: jest.fn(),
             save: jest.fn(),
             update: jest.fn(),
-        } as jest.Mocked<ProductRepositoryPort>;
+            updateStock: jest.fn(),
+        } as unknown as jest.Mocked<ProductRepositoryPort>;
 
         useCase = new CalculateSummaryUseCase(mockProductRepository);
     });
@@ -36,23 +38,27 @@ describe('CalculateSummaryUseCase', () => {
             mockProductRepository.findById.mockResolvedValue(Result.ok(mockProduct));
 
             const result = await useCase.execute({
-                productId: 'prod-123',
-                quantity: 2,
+                items: [
+                    { productId: 'prod-123', quantity: 2 }
+                ],
                 deliveryCity: 'Bogotá',
             });
 
             expect(result.isSuccess).toBe(true);
             const summary = result.getValue();
-            expect(summary.productId).toBe('prod-123');
-            expect(summary.productName).toBe('Gaming Laptop');
-            expect(summary.productPrice).toBe(1000000);
-            expect(summary.quantity).toBe(2);
+            expect(summary.items).toHaveLength(1);
+            expect(summary.items[0].productId).toBe('prod-123');
+            expect(summary.items[0].productName).toBe('Gaming Laptop');
+            expect(summary.items[0].productPrice).toBe(1000000);
+            expect(summary.items[0].quantity).toBe(2);
+            expect(summary.items[0].subtotal).toBe(2000000);
             expect(summary.subtotal).toBe(2000000);
-            expect(summary.baseFee).toBe(FEES.BASE_FEE);
-            expect(summary.deliveryFee).toBe(FEES.DELIVERY_FEE_LOCAL);
+            expect(summary.fees.base).toBe(FEES.BASE_FEE);
+            expect(summary.fees.delivery).toBe(FEES.DELIVERY_FEE_LOCAL);
             expect(summary.total).toBe(2000000 + FEES.BASE_FEE + FEES.DELIVERY_FEE_LOCAL);
             expect(summary.deliveryCity).toBe('Bogotá');
         });
+
 
         it('should calculate summary for valid product in national city', async () => {
             const mockProduct = new Product(
@@ -69,15 +75,16 @@ describe('CalculateSummaryUseCase', () => {
             mockProductRepository.findById.mockResolvedValue(Result.ok(mockProduct));
 
             const result = await useCase.execute({
-                productId: 'prod-456',
-                quantity: 1,
+                items: [
+                    { productId: 'prod-456', quantity: 1 }
+                ],
                 deliveryCity: 'Medellín',
             });
 
             expect(result.isSuccess).toBe(true);
             const summary = result.getValue();
             expect(summary.subtotal).toBe(50000);
-            expect(summary.deliveryFee).toBe(FEES.DELIVERY_FEE_NATIONAL);
+            expect(summary.fees.delivery).toBe(FEES.DELIVERY_FEE_NATIONAL);
             expect(summary.total).toBe(50000 + FEES.BASE_FEE + FEES.DELIVERY_FEE_NATIONAL);
         });
 
@@ -96,15 +103,16 @@ describe('CalculateSummaryUseCase', () => {
             mockProductRepository.findById.mockResolvedValue(Result.ok(mockProduct));
 
             const result = await useCase.execute({
-                productId: 'prod-789',
-                quantity: 5,
+                items: [
+                    { productId: 'prod-789', quantity: 5 }
+                ],
                 deliveryCity: 'Cali',
             });
 
             expect(result.isSuccess).toBe(true);
             const summary = result.getValue();
             expect(summary.subtotal).toBe(500000);
-            expect(summary.quantity).toBe(5);
+            expect(summary.items[0].quantity).toBe(5);
         });
 
         it('should calculate summary when quantity equals available stock', async () => {
@@ -122,14 +130,15 @@ describe('CalculateSummaryUseCase', () => {
             mockProductRepository.findById.mockResolvedValue(Result.ok(mockProduct));
 
             const result = await useCase.execute({
-                productId: 'prod-999',
-                quantity: 3,
+                items: [
+                    { productId: 'prod-999', quantity: 3 }
+                ],
                 deliveryCity: 'Bogotá',
             });
 
             expect(result.isSuccess).toBe(true);
             const summary = result.getValue();
-            expect(summary.quantity).toBe(3);
+            expect(summary.items[0].quantity).toBe(3);
             expect(summary.subtotal).toBe(600000);
         });
 
@@ -151,14 +160,13 @@ describe('CalculateSummaryUseCase', () => {
 
             for (const city of localCities) {
                 const result = await useCase.execute({
-                    productId: 'prod-123',
-                    quantity: 1,
+                    items: [{ productId: 'prod-123', quantity: 1 }],
                     deliveryCity: city,
                 });
 
                 expect(result.isSuccess).toBe(true);
                 const summary = result.getValue();
-                expect(summary.deliveryFee).toBe(FEES.DELIVERY_FEE_LOCAL);
+                expect(summary.fees.delivery).toBe(FEES.DELIVERY_FEE_LOCAL);
             }
         });
     });
@@ -166,25 +174,23 @@ describe('CalculateSummaryUseCase', () => {
     describe('execute - validation errors', () => {
         it('should fail when quantity is zero', async () => {
             const result = await useCase.execute({
-                productId: 'prod-123',
-                quantity: 0,
+                items: [{ productId: 'prod-123', quantity: 0 }],
                 deliveryCity: 'Bogotá',
             });
 
             expect(result.isFailure).toBe(true);
-            expect(result.getError()).toBe('Quantity must be greater than 0');
+            expect(result.getError()).toBe('Quantity for product prod-123 must be greater than 0');
             expect(mockProductRepository.findById).not.toHaveBeenCalled();
         });
 
         it('should fail when quantity is negative', async () => {
             const result = await useCase.execute({
-                productId: 'prod-123',
-                quantity: -1,
+                items: [{ productId: 'prod-123', quantity: -1 }],
                 deliveryCity: 'Bogotá',
             });
 
             expect(result.isFailure).toBe(true);
-            expect(result.getError()).toBe('Quantity must be greater than 0');
+            expect(result.getError()).toBe('Quantity for product prod-123 must be greater than 0');
             expect(mockProductRepository.findById).not.toHaveBeenCalled();
         });
 
@@ -192,13 +198,14 @@ describe('CalculateSummaryUseCase', () => {
             mockProductRepository.findById.mockResolvedValue(Result.fail('Product not found'));
 
             const result = await useCase.execute({
-                productId: 'non-existent-id',
-                quantity: 1,
+                items: [
+                    { productId: 'non-existent-id', quantity: 1 }
+                ],
                 deliveryCity: 'Bogotá',
             });
 
             expect(result.isFailure).toBe(true);
-            expect(result.getError()).toBe('Product not found');
+            expect(result.getError()).toBe('Product non-existent-id not found');
             expect(mockProductRepository.findById).toHaveBeenCalledWith('non-existent-id');
         });
 
@@ -217,13 +224,13 @@ describe('CalculateSummaryUseCase', () => {
             mockProductRepository.findById.mockResolvedValue(Result.ok(mockProduct));
 
             const result = await useCase.execute({
-                productId: 'prod-123',
-                quantity: 10,
+                items: [{ productId: 'prod-123', quantity: 10 }],
                 deliveryCity: 'Bogotá',
             });
 
             expect(result.isFailure).toBe(true);
-            expect(result.getError()).toBe('Insufficient stock. Available: 5, Requested: 10');
+            expect(result.getError()).toBe('Insufficient stock for Low Stock Product. Available: 5, Requested: 10');
+
         });
 
         it('should fail when product has zero stock', async () => {
@@ -241,13 +248,13 @@ describe('CalculateSummaryUseCase', () => {
             mockProductRepository.findById.mockResolvedValue(Result.ok(mockProduct));
 
             const result = await useCase.execute({
-                productId: 'prod-456',
-                quantity: 1,
+                items: [{ productId: 'prod-456', quantity: 1 }],
                 deliveryCity: 'Bogotá',
             });
 
             expect(result.isFailure).toBe(true);
-            expect(result.getError()).toBe('Insufficient stock. Available: 0, Requested: 1');
+            expect(result.getError()).toBe('Insufficient stock for Out of Stock Product. Available: 0, Requested: 1');
+
         });
     });
 
@@ -267,8 +274,7 @@ describe('CalculateSummaryUseCase', () => {
             mockProductRepository.findById.mockResolvedValue(Result.ok(mockProduct));
 
             const result = await useCase.execute({
-                productId: 'prod-cheap',
-                quantity: 1,
+                items: [{ productId: 'prod-cheap', quantity: 1 }],
                 deliveryCity: 'Bogotá',
             });
 
@@ -293,8 +299,7 @@ describe('CalculateSummaryUseCase', () => {
             mockProductRepository.findById.mockResolvedValue(Result.ok(mockProduct));
 
             const result = await useCase.execute({
-                productId: 'prod-expensive',
-                quantity: 1,
+                items: [{ productId: 'prod-expensive', quantity: 1 }],
                 deliveryCity: 'Medellín',
             });
 
@@ -319,14 +324,13 @@ describe('CalculateSummaryUseCase', () => {
             mockProductRepository.findById.mockResolvedValue(Result.ok(mockProduct));
 
             const result = await useCase.execute({
-                productId: 'prod-bulk',
-                quantity: 500,
+                items: [{ productId: 'prod-bulk', quantity: 500 }],
                 deliveryCity: 'Bogotá',
             });
 
             expect(result.isSuccess).toBe(true);
             const summary = result.getValue();
-            expect(summary.quantity).toBe(500);
+            expect(summary.items[0].quantity).toBe(500);
             expect(summary.subtotal).toBe(500000);
         });
 
@@ -345,15 +349,16 @@ describe('CalculateSummaryUseCase', () => {
             mockProductRepository.findById.mockResolvedValue(Result.ok(mockProduct));
 
             const result = await useCase.execute({
-                productId: 'prod-123',
-                quantity: 1,
+                items: [{ productId: 'prod-123', quantity: 1 }],
                 deliveryCity: 'BOGOTÁ',
             });
 
             expect(result.isSuccess).toBe(true);
             const summary = result.getValue();
-            expect(summary.deliveryFee).toBe(FEES.DELIVERY_FEE_LOCAL);
+            expect(summary.fees.delivery).toBe(FEES.DELIVERY_FEE_LOCAL);
+
         });
+
     });
 
     describe('repository interaction', () => {
@@ -372,8 +377,7 @@ describe('CalculateSummaryUseCase', () => {
             mockProductRepository.findById.mockResolvedValue(Result.ok(mockProduct));
 
             await useCase.execute({
-                productId: 'prod-test-123',
-                quantity: 1,
+                items: [{ productId: 'prod-test-123', quantity: 1 }],
                 deliveryCity: 'Bogotá',
             });
 
@@ -383,8 +387,7 @@ describe('CalculateSummaryUseCase', () => {
 
         it('should not call repository when quantity validation fails', async () => {
             await useCase.execute({
-                productId: 'prod-123',
-                quantity: 0,
+                items: [{ productId: 'prod-123', quantity: 0 }],
                 deliveryCity: 'Bogotá',
             });
 

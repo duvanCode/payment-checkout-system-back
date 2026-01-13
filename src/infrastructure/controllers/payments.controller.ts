@@ -4,8 +4,6 @@ import {
     Body,
     HttpStatus,
     HttpException,
-    ValidationPipe,
-    UsePipes,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { CalculateSummaryUseCase } from '../../application/use-cases/calculate-summary.use-case';
@@ -27,7 +25,6 @@ export class PaymentsController {
     ) { }
 
     @Post('calculate')
-    @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
     @ApiOperation({ summary: 'Calculate order summary including fees' })
     @ApiResponse({
         status: 200,
@@ -36,6 +33,13 @@ export class PaymentsController {
     })
     @ApiResponse({ status: 400, description: 'Bad request' })
     async calculateSummary(@Body() dto: CalculateSummaryDto) {
+        console.log('DTO received:', JSON.stringify(dto, null, 2));
+        console.log('DTO type:', dto.constructor.name);
+        console.log('Items:', dto.items);
+        console.log('Items type:', typeof dto.items);
+        console.log('Items isArray:', Array.isArray(dto.items));
+        console.log('Items length:', dto.items?.length);
+
         const result = await this.calculateSummaryUseCase.execute(dto);
 
         if (result.isFailure) {
@@ -57,7 +61,6 @@ export class PaymentsController {
     }
 
     @Post('process')
-    @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
     @ApiOperation({ summary: 'Process a payment transaction' })
     @ApiResponse({
         status: 200,
@@ -97,7 +100,6 @@ export class PaymentsController {
     }
 
     @Post('status')
-    @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
     @ApiOperation({ summary: 'Get the status of a transaction' })
     @ApiResponse({
         status: 200,

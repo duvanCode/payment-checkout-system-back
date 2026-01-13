@@ -12,10 +12,19 @@ import { Customer } from '../../domain/entities/customer.entity';
 import { TransactionStatus } from '../../domain/enums/transaction-status.enum';
 import { Money } from '../../domain/value-objects/money.vo';
 import { Result } from '../../shared/result';
+import { TransactionItem } from '../../domain/entities/transaction-item.entity';
+
+
+interface CreateTransactionItemInput {
+    productId: string;
+    productName?: string;
+    quantity: number;
+    price: number;
+    subtotal: number;
+}
 
 interface CreateTransactionInput {
-    productId: string;
-    quantity: number;
+    items: CreateTransactionItemInput[];
     subtotal: number;
     baseFee: number;
     deliveryFee: number;
@@ -24,6 +33,7 @@ interface CreateTransactionInput {
     customerPhone: string;
     customerFullName: string;
 }
+
 
 @Injectable()
 export class CreateTransactionUseCase {
@@ -48,21 +58,33 @@ export class CreateTransactionUseCase {
 
         const customer = customerResult.getValue();
 
+        // Crear ítems de la transacción
+        const transactionItems = input.items.map(item => new TransactionItem(
+            undefined,
+            undefined,
+            item.productId,
+            item.productName || 'Product',
+            item.quantity,
+            Money.from(item.price),
+            Money.from(item.subtotal),
+            new Date()
+        ));
+
         // Crear transacción
         const transaction = new Transaction(
             undefined, // ID se genera en DB
             Transaction.generateTransactionNumber(),
             TransactionStatus.PENDING,
-            input.productId,
             customer.getId()!,
-            input.quantity,
             Money.from(input.subtotal),
             Money.from(input.baseFee),
             Money.from(input.deliveryFee),
             Money.from(input.total),
+            transactionItems,
             new Date(),
             new Date(),
         );
+
 
         // Guardar en DB
         const savedResult = await this.transactionRepository.save(transaction);

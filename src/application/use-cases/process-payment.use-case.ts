@@ -29,12 +29,11 @@ export class ProcessPaymentUseCase {
 
     async execute(dto: PaymentRequestDto): Promise<Result<PaymentResultDto>> {
         try {
-            this.logger.log(`Starting payment process for product: ${dto.productId}`);
+            this.logger.log(`Starting payment process for ${dto.items.length} items`);
 
-            // PASO 1: Calcular summary (valida stock también)
+            // PASO 1: Calcular summary (valida stock también para todos los items)
             const summaryResult = await this.calculateSummaryUseCase.execute({
-                productId: dto.productId,
-                quantity: dto.quantity,
+                items: dto.items,
                 deliveryCity: dto.deliveryCity,
             });
 
@@ -44,18 +43,31 @@ export class ProcessPaymentUseCase {
 
             const summary = summaryResult.getValue();
 
-            // PASO 2: Crear transacción en estado PENDING
+            // Nota: El modelo de base de datos actual solo soporta un productId por transacción.
+            // Para mantener la funcionalidad sin migrar la base de datos ahora, guardaremos
+            // la referencia del primer producto en la transacción, pero el total será el real de todos los items.
+            const firstItem = dto.items[0];
+
+            // PASO 2: Crear transacción en estado PENDING con todos los items
             const transactionResult = await this.createTransactionUseCase.execute({
-                productId: dto.productId,
-                quantity: dto.quantity,
+                items: summary.items.map(item => ({
+                    productId: item.productId,
+                    productName: item.productName,
+                    quantity: item.quantity,
+                    price: item.productPrice,
+                    subtotal: item.subtotal
+                })),
+
                 subtotal: summary.subtotal,
-                baseFee: summary.baseFee,
-                deliveryFee: summary.deliveryFee,
+                baseFee: summary.fees.base,
+                deliveryFee: summary.fees.delivery,
+
                 total: summary.total,
                 customerEmail: dto.customerEmail,
                 customerPhone: dto.customerPhone,
                 customerFullName: dto.customerFullName,
             });
+
 
             if (transactionResult.isFailure) {
                 return Result.fail(transactionResult.getError());
@@ -84,22 +96,22 @@ export class ProcessPaymentUseCase {
                 await this.transactionRepository.update(transaction);
 
                 // Devolver respuesta con el estado actual
-                // El job se encargará de sincronizar y procesar stock/delivery
                 const result: PaymentResultDto = {
                     success: true,
                     transactionNumber: transaction.getTransactionNumber(),
                     status: transaction.getStatus(),
                     message: this.getMessageForStatus(transaction.getStatus()),
                     product: {
-                        id: transaction['productId'],
-                        name: summary.productName,
-                        updatedStock: 0, // El stock se actualizará cuando el job procese la transacción aprobada
+                        id: firstItem.productId,
+                        name: summary.items[0].productName + (dto.items.length > 1 ? ` y ${dto.items.length - 1} más` : ''),
+                        updatedStock: 0,
                     },
                     createdAt: transaction['createdAt'],
                     processedAt: new Date(),
                 };
 
                 return Result.ok(result);
+
             } else {
                 this.logger.error(`Payment gateway error: ${paymentResult.getError()}`);
 

@@ -11,16 +11,32 @@ export class PrismaProductRepository implements ProductRepositoryPort {
 
     async findById(id: string): Promise<Result<Product>> {
         try {
+            console.log('🔍 [REPOSITORY] Searching product with ID:', id);
+            console.log('🔍 [REPOSITORY] ID type:', typeof id);
+            console.log('🔍 [REPOSITORY] ID length:', id.length);
+
             const product = await this.prisma.product.findUnique({
                 where: { id },
             });
 
+            console.log('🔍 [REPOSITORY] Prisma result:', product ? 'FOUND' : 'NOT FOUND');
+            if (product) {
+                console.log('🔍 [REPOSITORY] Product data:', {
+                    id: product.id,
+                    name: product.name,
+                    stock: product.stock
+                });
+            }
+
             if (!product) {
+                console.error('❌ [REPOSITORY] Product not found with ID:', id);
                 return Result.fail('Product not found');
             }
 
             return Result.ok(this.toDomain(product));
         } catch (error) {
+            console.error('❌ [REPOSITORY] Error finding product:', error.message);
+            console.error('❌ [REPOSITORY] Error stack:', error.stack);
             return Result.fail(`Error finding product: ${error.message}`);
         }
     }

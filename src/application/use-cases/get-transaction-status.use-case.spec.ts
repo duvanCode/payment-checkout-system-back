@@ -34,13 +34,22 @@ describe('GetTransactionStatusUseCase', () => {
                 'trans-123',
                 'TRX-1234567890-ABC',
                 TransactionStatus.PENDING,
-                'prod-456',
                 'cust-789',
-                2,
                 Money.from(100000, 'COP'),
                 Money.from(2000, 'COP'),
                 Money.from(5000, 'COP'),
                 Money.from(107000, 'COP'),
+                [
+                    {
+                        toJSON: () => ({
+                            productId: 'prod-456',
+                            productName: 'Test Product',
+                            quantity: 2,
+                            price: 50000,
+                            subtotal: 100000,
+                        })
+                    }
+                ] as any,
                 new Date('2024-01-01'),
                 new Date('2024-01-01'),
             );
@@ -58,8 +67,9 @@ describe('GetTransactionStatusUseCase', () => {
             expect(status.serviceStatus).toBeUndefined();
             expect(status.serviceTransactionId).toBeUndefined();
             expect(status.total).toBe(107000);
-            expect(status.productId).toBe('prod-456');
-            expect(status.quantity).toBe(2);
+            expect(status.items).toHaveLength(1);
+            expect(status.items[0].productId).toBe('prod-456');
+            expect(status.items[0].quantity).toBe(2);
             expect(mockPaymentGateway.getTransaction).not.toHaveBeenCalled();
         });
 
@@ -68,13 +78,22 @@ describe('GetTransactionStatusUseCase', () => {
                 'trans-456',
                 'TRX-9876543210-XYZ',
                 TransactionStatus.APPROVED,
-                'prod-111',
                 'cust-222',
-                1,
                 Money.from(50000, 'COP'),
                 Money.from(2000, 'COP'),
                 Money.from(5000, 'COP'),
                 Money.from(57000, 'COP'),
+                [
+                    {
+                        toJSON: () => ({
+                            productId: 'prod-111',
+                            productName: 'Product 111',
+                            quantity: 1,
+                            price: 50000,
+                            subtotal: 50000,
+                        })
+                    }
+                ] as any,
                 new Date('2024-01-01'),
                 new Date('2024-01-02'),
                 'service-trans-999',
@@ -90,8 +109,9 @@ describe('GetTransactionStatusUseCase', () => {
                     transactionId: 'service-trans-999',
                     status: 'APPROVED',
                     amount: 57000,
-                }),
+                } as any),
             );
+
 
             const result = await useCase.execute('TRX-9876543210-XYZ');
 
@@ -107,13 +127,12 @@ describe('GetTransactionStatusUseCase', () => {
                 'trans-789',
                 'TRX-5555555555-AAA',
                 TransactionStatus.PENDING,
-                'prod-333',
                 'cust-444',
-                1,
                 Money.from(30000, 'COP'),
                 Money.from(2000, 'COP'),
                 Money.from(5000, 'COP'),
                 Money.from(37000, 'COP'),
+                [],
                 new Date('2024-01-01'),
                 new Date('2024-01-01'),
                 'service-trans-555',
@@ -152,13 +171,12 @@ describe('GetTransactionStatusUseCase', () => {
                 'trans-approved',
                 'TRX-1111111111-BBB',
                 TransactionStatus.APPROVED,
-                'prod-666',
                 'cust-777',
-                3,
                 Money.from(150000, 'COP'),
                 Money.from(2000, 'COP'),
                 Money.from(5000, 'COP'),
                 Money.from(157000, 'COP'),
+                [],
                 new Date('2024-01-01'),
                 new Date('2024-01-03'),
                 'service-approved-123',
@@ -176,7 +194,7 @@ describe('GetTransactionStatusUseCase', () => {
                     transactionId: 'service-approved-123',
                     status: 'APPROVED',
                     amount: 157000,
-                }),
+                } as any),
             );
 
             const result = await useCase.execute('TRX-1111111111-BBB');
@@ -193,13 +211,12 @@ describe('GetTransactionStatusUseCase', () => {
                 'trans-declined',
                 'TRX-2222222222-CCC',
                 TransactionStatus.DECLINED,
-                'prod-888',
                 'cust-999',
-                1,
                 Money.from(80000, 'COP'),
                 Money.from(2000, 'COP'),
                 Money.from(5000, 'COP'),
                 Money.from(87000, 'COP'),
+                [],
                 new Date('2024-01-01'),
                 new Date('2024-01-02'),
                 'service-declined-456',
@@ -217,7 +234,7 @@ describe('GetTransactionStatusUseCase', () => {
                     transactionId: 'service-declined-456',
                     status: 'DECLINED',
                     amount: 87000,
-                }),
+                } as any),
             );
 
             const result = await useCase.execute('TRX-2222222222-CCC');
@@ -234,13 +251,12 @@ describe('GetTransactionStatusUseCase', () => {
                 'trans-error',
                 'TRX-3333333333-DDD',
                 TransactionStatus.ERROR,
-                'prod-111',
                 'cust-222',
-                1,
                 Money.from(60000, 'COP'),
                 Money.from(2000, 'COP'),
                 Money.from(5000, 'COP'),
                 Money.from(67000, 'COP'),
+                [],
                 new Date('2024-01-01'),
                 new Date('2024-01-01'),
                 undefined,
@@ -266,13 +282,12 @@ describe('GetTransactionStatusUseCase', () => {
                 'trans-update',
                 'TRX-4444444444-EEE',
                 TransactionStatus.PENDING,
-                'prod-555',
                 'cust-666',
-                2,
-                Money.from(100000, 'COP'),
+                Money.from(10000, 'COP'),
                 Money.from(2000, 'COP'),
                 Money.from(5000, 'COP'),
                 Money.from(107000, 'COP'),
+                [],
                 new Date('2024-01-01'),
                 new Date('2024-01-01'),
                 'service-pending-789',
@@ -289,7 +304,7 @@ describe('GetTransactionStatusUseCase', () => {
                     transactionId: 'service-pending-789',
                     status: 'APPROVED',
                     amount: 107000,
-                }),
+                } as any),
             );
 
             const result = await useCase.execute('TRX-4444444444-EEE');
@@ -309,13 +324,22 @@ describe('GetTransactionStatusUseCase', () => {
                 'trans-full',
                 'TRX-7777777777-FFF',
                 TransactionStatus.APPROVED,
-                'prod-999',
                 'cust-888',
-                5,
                 Money.from(250000, 'COP'),
                 Money.from(2000, 'COP'),
                 Money.from(10000, 'COP'),
                 Money.from(262000, 'COP'),
+                [
+                    {
+                        toJSON: () => ({
+                            productId: 'prod-999',
+                            productName: 'Product 999',
+                            quantity: 5,
+                            price: 50000,
+                            subtotal: 250000,
+                        })
+                    }
+                ] as any,
                 createdAt,
                 updatedAt,
                 'service-full-999',
@@ -333,7 +357,7 @@ describe('GetTransactionStatusUseCase', () => {
                     transactionId: 'service-full-999',
                     status: 'APPROVED',
                     amount: 262000,
-                }),
+                } as any),
             );
 
             const result = await useCase.execute('TRX-7777777777-FFF');
@@ -345,8 +369,9 @@ describe('GetTransactionStatusUseCase', () => {
             expect(status.serviceStatus).toBe('APPROVED');
             expect(status.serviceTransactionId).toBe('service-full-999');
             expect(status.total).toBe(262000);
-            expect(status.productId).toBe('prod-999');
-            expect(status.quantity).toBe(5);
+            expect(status.items).toHaveLength(1);
+            expect(status.items[0].productId).toBe('prod-999');
+            expect(status.items[0].quantity).toBe(5);
             expect(status.createdAt).toEqual(createdAt);
             expect(status.updatedAt).toEqual(updatedAt);
             expect(status.processedAt).toEqual(processedAt);
@@ -359,13 +384,12 @@ describe('GetTransactionStatusUseCase', () => {
                 'trans-test',
                 transactionNumber,
                 TransactionStatus.PENDING,
-                'prod-test',
                 'cust-test',
-                1,
                 Money.from(50000, 'COP'),
                 Money.from(2000, 'COP'),
                 Money.from(5000, 'COP'),
                 Money.from(57000, 'COP'),
+                [],
                 new Date(),
                 new Date(),
             );

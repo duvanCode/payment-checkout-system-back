@@ -51,8 +51,10 @@ describe('WebhooksController', () => {
                 isApproved: () => false,
                 getStatus: () => TransactionStatus.PENDING,
                 approve: jest.fn(),
-                productId: 'prod-1',
-                quantity: 2,
+                getItems: () => [{
+                    getProductId: () => 'prod-1',
+                    getQuantity: () => 2,
+                }],
             };
 
             mockTransactionRepository.findByTransactionNumber.mockResolvedValue(Result.ok(mockTransaction));
@@ -172,8 +174,10 @@ describe('WebhooksController', () => {
                 isApproved: () => false,
                 getStatus: () => TransactionStatus.PENDING,
                 approve: jest.fn(),
-                productId: 'prod-1',
-                quantity: 1,
+                getItems: () => [{
+                    getProductId: () => 'prod-1',
+                    getQuantity: () => 1,
+                }],
             };
 
             mockTransactionRepository.findByTransactionNumber.mockResolvedValue(Result.ok(mockTransaction));

@@ -7,6 +7,7 @@ import { Transaction } from '../../domain/entities/transaction.entity';
 import { TransactionStatus } from '../../domain/enums/transaction-status.enum';
 import { Money } from '../../domain/value-objects/money.vo';
 import { Result } from '../../shared/result';
+import { TransactionItem } from '../../domain/entities/transaction-item.entity';
 
 describe('ProcessPaymentUseCase', () => {
     let useCase: ProcessPaymentUseCase;
@@ -16,8 +17,9 @@ describe('ProcessPaymentUseCase', () => {
     let mockCreateTransactionUseCase: jest.Mocked<CreateTransactionUseCase>;
 
     const validPaymentRequest = {
-        productId: 'prod-123',
-        quantity: 2,
+        items: [
+            { productId: 'prod-123', quantity: 2 }
+        ],
         deliveryCity: 'Bogotá',
         deliveryAddress: 'Calle 123 #45-67',
         deliveryDepartment: 'Cundinamarca',
@@ -28,28 +30,48 @@ describe('ProcessPaymentUseCase', () => {
     };
 
     const mockOrderSummary = {
-        productId: 'prod-123',
-        productName: 'Gaming Laptop',
-        productPrice: 50000,
-        quantity: 2,
+        items: [
+            {
+                productId: 'prod-123',
+                productName: 'Gaming Laptop',
+                productPrice: 50000,
+                quantity: 2,
+                subtotal: 100000,
+            }
+        ],
         subtotal: 100000,
-        baseFee: 2000,
-        deliveryFee: 5000,
+        fees: {
+            base: 2000,
+            delivery: 5000,
+        },
         total: 107000,
         deliveryCity: 'Bogotá',
     };
+
+
+    const mockTransactionItems = [
+        new TransactionItem(
+            'item-1',
+            'trans-456',
+            'prod-123',
+            'Gaming Laptop',
+            2,
+            Money.from(50000, 'COP'),
+            Money.from(100000, 'COP'),
+            new Date('2024-01-01'),
+        )
+    ];
 
     const mockTransaction = new Transaction(
         'trans-456',
         'TRX-1234567890-ABC',
         TransactionStatus.PENDING,
-        'prod-123',
         'cust-789',
-        2,
         Money.from(100000, 'COP'),
         Money.from(2000, 'COP'),
         Money.from(5000, 'COP'),
         Money.from(107000, 'COP'),
+        mockTransactionItems,
         new Date('2024-01-01'),
         new Date('2024-01-01'),
     );
@@ -93,6 +115,11 @@ describe('ProcessPaymentUseCase', () => {
                     transactionId: 'wompi-trans-999',
                     status: 'APPROVED',
                     amount: 107000,
+                    statusMessage: 'APPROVED',
+                    reference: 'TRX-1234567890-ABC',
+                    currency: 'COP',
+                    paymentMethod: 'CARD',
+                    createdAt: new Date().toISOString(),
                 }),
             );
             mockTransactionRepository.update.mockResolvedValue(Result.ok(mockTransaction));
@@ -105,8 +132,8 @@ describe('ProcessPaymentUseCase', () => {
             expect(paymentResult.transactionNumber).toBe('TRX-1234567890-ABC');
             expect(paymentResult.status).toBe(TransactionStatus.APPROVED);
             expect(paymentResult.message).toContain('Payment approved');
-            expect(paymentResult.product.id).toBe('prod-123');
-            expect(paymentResult.product.name).toBe('Gaming Laptop');
+            expect(paymentResult.product!.id).toBe('prod-123');
+            expect(paymentResult.product!.name).toBe('Gaming Laptop');
         });
 
         it('should process payment successfully with PENDING status', async () => {
@@ -117,6 +144,11 @@ describe('ProcessPaymentUseCase', () => {
                     transactionId: 'wompi-pending-123',
                     status: 'PENDING',
                     amount: 107000,
+                    statusMessage: 'PENDING',
+                    reference: 'TRX-1234567890-ABC',
+                    currency: 'COP',
+                    paymentMethod: 'CARD',
+                    createdAt: new Date().toISOString(),
                 }),
             );
             mockTransactionRepository.update.mockResolvedValue(Result.ok(mockTransaction));
@@ -138,6 +170,11 @@ describe('ProcessPaymentUseCase', () => {
                     transactionId: 'wompi-update-456',
                     status: 'APPROVED',
                     amount: 107000,
+                    statusMessage: 'APPROVED',
+                    reference: 'TRX-1234567890-ABC',
+                    currency: 'COP',
+                    paymentMethod: 'CARD',
+                    createdAt: new Date().toISOString(),
                 }),
             );
 
@@ -152,15 +189,25 @@ describe('ProcessPaymentUseCase', () => {
             mockCalculateSummaryUseCase.execute.mockResolvedValue(Result.ok(mockOrderSummary));
             mockCreateTransactionUseCase.execute.mockResolvedValue(Result.ok(mockTransaction));
             mockPaymentGateway.processPayment.mockResolvedValue(
-                Result.ok({ transactionId: 'test', status: 'APPROVED', amount: 107000 }),
+                Result.ok({
+                    transactionId: 'test',
+                    status: 'APPROVED',
+                    amount: 107000,
+                    statusMessage: 'APPROVED',
+                    reference: 'TRX-1234567890-ABC',
+                    currency: 'COP',
+                    paymentMethod: 'CARD',
+                    createdAt: new Date().toISOString(),
+                }),
             );
             mockTransactionRepository.update.mockResolvedValue(Result.ok(mockTransaction));
 
             await useCase.execute(validPaymentRequest);
 
             expect(mockCalculateSummaryUseCase.execute).toHaveBeenCalledWith({
-                productId: 'prod-123',
-                quantity: 2,
+                items: [
+                    { productId: 'prod-123', quantity: 2 },
+                ],
                 deliveryCity: 'Bogotá',
             });
         });
@@ -169,15 +216,25 @@ describe('ProcessPaymentUseCase', () => {
             mockCalculateSummaryUseCase.execute.mockResolvedValue(Result.ok(mockOrderSummary));
             mockCreateTransactionUseCase.execute.mockResolvedValue(Result.ok(mockTransaction));
             mockPaymentGateway.processPayment.mockResolvedValue(
-                Result.ok({ transactionId: 'test', status: 'APPROVED', amount: 107000 }),
+                Result.ok({
+                    transactionId: 'test',
+                    status: 'APPROVED',
+                    amount: 107000,
+                    statusMessage: 'APPROVED',
+                    reference: 'TRX-1234567890-ABC',
+                    currency: 'COP',
+                    paymentMethod: 'CARD',
+                    createdAt: new Date().toISOString(),
+                }),
             );
             mockTransactionRepository.update.mockResolvedValue(Result.ok(mockTransaction));
 
             await useCase.execute(validPaymentRequest);
 
             expect(mockCreateTransactionUseCase.execute).toHaveBeenCalledWith({
-                productId: 'prod-123',
-                quantity: 2,
+                items: [
+                    { productId: 'prod-123', quantity: 2, price: 50000, productName: 'Gaming Laptop', subtotal: 100000 }
+                ],
                 subtotal: 100000,
                 baseFee: 2000,
                 deliveryFee: 5000,
@@ -192,7 +249,16 @@ describe('ProcessPaymentUseCase', () => {
             mockCalculateSummaryUseCase.execute.mockResolvedValue(Result.ok(mockOrderSummary));
             mockCreateTransactionUseCase.execute.mockResolvedValue(Result.ok(mockTransaction));
             mockPaymentGateway.processPayment.mockResolvedValue(
-                Result.ok({ transactionId: 'test', status: 'APPROVED', amount: 107000 }),
+                Result.ok({
+                    transactionId: 'test',
+                    status: 'APPROVED',
+                    amount: 107000,
+                    statusMessage: 'APPROVED',
+                    reference: 'TRX-1234567890-ABC',
+                    currency: 'COP',
+                    paymentMethod: 'CARD',
+                    createdAt: new Date().toISOString(),
+                }),
             );
             mockTransactionRepository.update.mockResolvedValue(Result.ok(mockTransaction));
 
@@ -211,7 +277,16 @@ describe('ProcessPaymentUseCase', () => {
             mockCalculateSummaryUseCase.execute.mockResolvedValue(Result.ok(mockOrderSummary));
             mockCreateTransactionUseCase.execute.mockResolvedValue(Result.ok(mockTransaction));
             mockPaymentGateway.processPayment.mockResolvedValue(
-                Result.ok({ transactionId: 'test', status: 'APPROVED', amount: 107000 }),
+                Result.ok({
+                    transactionId: 'test',
+                    status: 'APPROVED',
+                    amount: 107000,
+                    statusMessage: 'APPROVED',
+                    reference: 'TRX-1234567890-ABC',
+                    currency: 'COP',
+                    paymentMethod: 'CARD',
+                    createdAt: new Date().toISOString(),
+                }),
             );
             mockTransactionRepository.update.mockResolvedValue(Result.ok(mockTransaction));
 
@@ -274,7 +349,10 @@ describe('ProcessPaymentUseCase', () => {
                 Result.fail('Quantity must be greater than 0'),
             );
 
-            const invalidRequest = { ...validPaymentRequest, quantity: 0 };
+            const invalidRequest = {
+                ...validPaymentRequest,
+                items: [{ ...validPaymentRequest.items[0], quantity: 0 }]
+            };
             const result = await useCase.execute(invalidRequest);
 
             expect(result.isFailure).toBe(true);
@@ -373,7 +451,16 @@ describe('ProcessPaymentUseCase', () => {
             mockCalculateSummaryUseCase.execute.mockResolvedValue(Result.ok(mockOrderSummary));
             mockCreateTransactionUseCase.execute.mockResolvedValue(Result.ok(mockTransaction));
             mockPaymentGateway.processPayment.mockResolvedValue(
-                Result.ok({ transactionId: 'test', status: 'APPROVED', amount: 107000 }),
+                Result.ok({
+                    transactionId: 'test',
+                    status: 'APPROVED',
+                    amount: 107000,
+                    statusMessage: 'APPROVED',
+                    reference: 'TRX-1234567890-ABC',
+                    currency: 'COP',
+                    paymentMethod: 'CARD',
+                    createdAt: new Date().toISOString(),
+                }),
             );
             mockTransactionRepository.update.mockRejectedValue(
                 new Error('Update failed'),
@@ -391,7 +478,16 @@ describe('ProcessPaymentUseCase', () => {
             mockCalculateSummaryUseCase.execute.mockResolvedValue(Result.ok(mockOrderSummary));
             mockCreateTransactionUseCase.execute.mockResolvedValue(Result.ok(mockTransaction));
             mockPaymentGateway.processPayment.mockResolvedValue(
-                Result.ok({ transactionId: 'test', status: 'PENDING', amount: 107000 }),
+                Result.ok({
+                    transactionId: 'test',
+                    status: 'PENDING',
+                    amount: 107000,
+                    statusMessage: 'PENDING',
+                    reference: 'TRX-1234567890-ABC',
+                    currency: 'COP',
+                    paymentMethod: 'CARD',
+                    createdAt: new Date().toISOString(),
+                }),
             );
             mockTransactionRepository.update.mockResolvedValue(Result.ok(mockTransaction));
 
@@ -407,7 +503,16 @@ describe('ProcessPaymentUseCase', () => {
             mockCalculateSummaryUseCase.execute.mockResolvedValue(Result.ok(mockOrderSummary));
             mockCreateTransactionUseCase.execute.mockResolvedValue(Result.ok(mockTransaction));
             mockPaymentGateway.processPayment.mockResolvedValue(
-                Result.ok({ transactionId: 'test', status: 'APPROVED', amount: 107000 }),
+                Result.ok({
+                    transactionId: 'test',
+                    status: 'APPROVED',
+                    amount: 107000,
+                    statusMessage: 'APPROVED',
+                    reference: 'TRX-1234567890-ABC',
+                    currency: 'COP',
+                    paymentMethod: 'CARD',
+                    createdAt: new Date().toISOString(),
+                }),
             );
             mockTransactionRepository.update.mockResolvedValue(Result.ok(mockTransaction));
 
@@ -421,7 +526,16 @@ describe('ProcessPaymentUseCase', () => {
             mockCalculateSummaryUseCase.execute.mockResolvedValue(Result.ok(mockOrderSummary));
             mockCreateTransactionUseCase.execute.mockResolvedValue(Result.ok(mockTransaction));
             mockPaymentGateway.processPayment.mockResolvedValue(
-                Result.ok({ transactionId: 'test', status: 'DECLINED', amount: 107000 }),
+                Result.ok({
+                    transactionId: 'test',
+                    status: 'DECLINED',
+                    amount: 107000,
+                    statusMessage: 'DECLINED',
+                    reference: 'TRX-1234567890-ABC',
+                    currency: 'COP',
+                    paymentMethod: 'CARD',
+                    createdAt: new Date().toISOString(),
+                }),
             );
             mockTransactionRepository.update.mockResolvedValue(Result.ok(mockTransaction));
 
@@ -456,7 +570,16 @@ describe('ProcessPaymentUseCase', () => {
             const gatewaySpy = jest
                 .spyOn(mockPaymentGateway, 'processPayment')
                 .mockResolvedValue(
-                    Result.ok({ transactionId: 'test', status: 'APPROVED', amount: 107000 }),
+                    Result.ok({
+                        transactionId: 'test',
+                        status: 'APPROVED',
+                        amount: 107000,
+                        statusMessage: 'APPROVED',
+                        reference: 'TRX-1234567890-ABC',
+                        currency: 'COP',
+                        paymentMethod: 'CARD',
+                        createdAt: new Date().toISOString(),
+                    }),
                 );
             const updateSpy = jest
                 .spyOn(mockTransactionRepository, 'update')
@@ -520,7 +643,16 @@ describe('ProcessPaymentUseCase', () => {
             );
             mockCreateTransactionUseCase.execute.mockResolvedValue(Result.ok(mockTransaction));
             mockPaymentGateway.processPayment.mockResolvedValue(
-                Result.ok({ transactionId: 'test', status: 'APPROVED', amount: 10012000 }),
+                Result.ok({
+                    transactionId: 'test',
+                    status: 'APPROVED',
+                    amount: 10012000,
+                    statusMessage: 'APPROVED',
+                    reference: 'TRX-1234567890-ABC',
+                    currency: 'COP',
+                    paymentMethod: 'CARD',
+                    createdAt: new Date().toISOString(),
+                }),
             );
             mockTransactionRepository.update.mockResolvedValue(Result.ok(mockTransaction));
 
@@ -530,13 +662,29 @@ describe('ProcessPaymentUseCase', () => {
         });
 
         it('should handle single quantity orders', async () => {
-            const singleQuantityRequest = { ...validPaymentRequest, quantity: 1 };
-            const singleSummary = { ...mockOrderSummary, quantity: 1, subtotal: 50000 };
+            const singleQuantityRequest = {
+                ...validPaymentRequest,
+                items: [{ ...validPaymentRequest.items[0], quantity: 1 }]
+            };
+            const singleSummary = {
+                ...mockOrderSummary,
+                items: [{ ...mockOrderSummary.items[0], quantity: 1 }],
+                subtotal: 50000
+            };
 
             mockCalculateSummaryUseCase.execute.mockResolvedValue(Result.ok(singleSummary));
             mockCreateTransactionUseCase.execute.mockResolvedValue(Result.ok(mockTransaction));
             mockPaymentGateway.processPayment.mockResolvedValue(
-                Result.ok({ transactionId: 'test', status: 'APPROVED', amount: 57000 }),
+                Result.ok({
+                    transactionId: 'test',
+                    status: 'APPROVED',
+                    amount: 57000,
+                    statusMessage: 'APPROVED',
+                    reference: 'TRX-1234567890-ABC',
+                    currency: 'COP',
+                    paymentMethod: 'CARD',
+                    createdAt: new Date().toISOString(),
+                }),
             );
             mockTransactionRepository.update.mockResolvedValue(Result.ok(mockTransaction));
 
@@ -547,12 +695,25 @@ describe('ProcessPaymentUseCase', () => {
 
         it('should handle different delivery cities', async () => {
             const nationalRequest = { ...validPaymentRequest, deliveryCity: 'Medellín' };
-            const nationalSummary = { ...mockOrderSummary, deliveryFee: 10000, total: 112000 };
+            const nationalSummary = {
+                ...mockOrderSummary,
+                fees: { ...mockOrderSummary.fees, delivery: 10000 },
+                total: 112000
+            };
 
             mockCalculateSummaryUseCase.execute.mockResolvedValue(Result.ok(nationalSummary));
             mockCreateTransactionUseCase.execute.mockResolvedValue(Result.ok(mockTransaction));
             mockPaymentGateway.processPayment.mockResolvedValue(
-                Result.ok({ transactionId: 'test', status: 'APPROVED', amount: 112000 }),
+                Result.ok({
+                    transactionId: 'test',
+                    status: 'APPROVED',
+                    amount: 112000,
+                    statusMessage: 'APPROVED',
+                    reference: 'TRX-1234567890-ABC',
+                    currency: 'COP',
+                    paymentMethod: 'CARD',
+                    createdAt: new Date().toISOString(),
+                }),
             );
             mockTransactionRepository.update.mockResolvedValue(Result.ok(mockTransaction));
 
@@ -565,7 +726,16 @@ describe('ProcessPaymentUseCase', () => {
             mockCalculateSummaryUseCase.execute.mockResolvedValue(Result.ok(mockOrderSummary));
             mockCreateTransactionUseCase.execute.mockResolvedValue(Result.ok(mockTransaction));
             mockPaymentGateway.processPayment.mockResolvedValue(
-                Result.ok({ transactionId: 'test', status: 'APPROVED', amount: 107000 }),
+                Result.ok({
+                    transactionId: 'test',
+                    status: 'APPROVED',
+                    amount: 107000,
+                    statusMessage: 'APPROVED',
+                    reference: 'TRX-1234567890-ABC',
+                    currency: 'COP',
+                    paymentMethod: 'CARD',
+                    createdAt: new Date().toISOString(),
+                }),
             );
             mockTransactionRepository.update.mockResolvedValue(Result.ok(mockTransaction));
 
@@ -573,9 +743,9 @@ describe('ProcessPaymentUseCase', () => {
 
             const paymentResult = result.getValue();
             expect(paymentResult.product).toBeDefined();
-            expect(paymentResult.product.id).toBe('prod-123');
-            expect(paymentResult.product.name).toBe('Gaming Laptop');
-            expect(paymentResult.product.updatedStock).toBe(0);
+            expect(paymentResult.product!.id).toBe('prod-123');
+            expect(paymentResult.product!.name).toBe('Gaming Laptop');
+            expect(paymentResult.product!.updatedStock).toBe(0);
         });
     });
 });

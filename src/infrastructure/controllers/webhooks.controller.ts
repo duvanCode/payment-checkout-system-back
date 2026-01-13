@@ -110,9 +110,21 @@ export class WebhooksController {
         await this.transactionRepository.update(existingTransaction);
 
         // Actualizar stock
-        const productId = existingTransaction['productId'];
-        const quantity = existingTransaction['quantity'];
-        await this.updateStockUseCase.execute(productId, quantity);
+        const items = existingTransaction.getItems();
+        for (const item of items) {
+            try {
+                const stockResult = await this.updateStockUseCase.execute(
+                    item.getProductId(),
+                    item.getQuantity(),
+                );
+                if (stockResult.isFailure) {
+                    this.logger.error(`Failed to update stock for product ${item.getProductId()}: ${stockResult.getError()}`);
+                }
+            } catch (error) {
+                this.logger.error(`Error updating stock for product ${item.getProductId()}: ${error.message}`);
+            }
+        }
+
 
         // Crear delivery si no existe
         const deliveryResult = await this.deliveryRepository.findByTransactionId(

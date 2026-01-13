@@ -4,6 +4,7 @@ import { CustomerRepositoryPort } from '../ports/customer.repository.port';
 import { Transaction } from '../../domain/entities/transaction.entity';
 import { Customer } from '../../domain/entities/customer.entity';
 import { TransactionStatus } from '../../domain/enums/transaction-status.enum';
+import { Money } from '../../domain/value-objects/money.vo';
 import { Result } from '../../shared/result';
 
 describe('CreateTransactionUseCase', () => {
@@ -21,10 +22,11 @@ describe('CreateTransactionUseCase', () => {
         } as jest.Mocked<TransactionRepositoryPort>;
 
         mockCustomerRepository = {
+            findById: jest.fn(),
             findByEmail: jest.fn(),
             save: jest.fn(),
             update: jest.fn(),
-        } as jest.Mocked<CustomerRepositoryPort>;
+        } as unknown as jest.Mocked<CustomerRepositoryPort>;
 
         useCase = new CreateTransactionUseCase(
             mockTransactionRepository,
@@ -34,8 +36,16 @@ describe('CreateTransactionUseCase', () => {
 
     describe('execute', () => {
         const validInput = {
-            productId: 'prod-123',
-            quantity: 2,
+            items: [
+                {
+                    productId: 'prod-123',
+                    productName: 'Test Product',
+                    quantity: 2,
+                    price: 50000,
+                    subtotal: 100000
+                }
+
+            ],
             subtotal: 100000,
             baseFee: 2000,
             deliveryFee: 5000,
@@ -44,6 +54,7 @@ describe('CreateTransactionUseCase', () => {
             customerPhone: '3001234567',
             customerFullName: 'John Doe',
         };
+
 
         it('should create transaction with existing customer', async () => {
             const existingCustomer = new Customer(
@@ -59,13 +70,12 @@ describe('CreateTransactionUseCase', () => {
                 'trans-456',
                 'TRX-1234567890-ABC',
                 TransactionStatus.PENDING,
-                'prod-123',
                 'cust-123',
-                2,
-                { getAmount: () => 100000 } as any,
-                { getAmount: () => 2000 } as any,
-                { getAmount: () => 5000 } as any,
-                { getAmount: () => 107000 } as any,
+                Money.from(100000, 'COP'),
+                Money.from(2000, 'COP'),
+                Money.from(5000, 'COP'),
+                Money.from(107000, 'COP'),
+                [], // Items mock (can be empty for this test)
                 new Date(),
                 new Date(),
             );
@@ -95,13 +105,12 @@ describe('CreateTransactionUseCase', () => {
                 'trans-new-999',
                 'TRX-9876543210-XYZ',
                 TransactionStatus.PENDING,
-                'prod-456',
                 'cust-new-789',
-                1,
-                { getAmount: () => 50000 } as any,
-                { getAmount: () => 2000 } as any,
-                { getAmount: () => 5000 } as any,
-                { getAmount: () => 57000 } as any,
+                Money.from(50000, 'COP'),
+                Money.from(2000, 'COP'),
+                Money.from(5000, 'COP'),
+                Money.from(57000, 'COP'),
+                [],
                 new Date(),
                 new Date(),
             );
@@ -232,7 +241,7 @@ describe('CreateTransactionUseCase', () => {
             const saveSpy = jest.spyOn(mockTransactionRepository, 'save').mockImplementation(
                 async (transaction: Transaction) => {
                     const json = transaction.toJSON();
-                    expect(json.productId).toBe('prod-123');
+                    expect(json.items[0].productId).toBe('prod-123');
                     expect(json.customerId).toBe('cust-ids-777');
                     return Result.ok(transaction);
                 },
@@ -258,7 +267,7 @@ describe('CreateTransactionUseCase', () => {
             const saveSpy = jest.spyOn(mockTransactionRepository, 'save').mockImplementation(
                 async (transaction: Transaction) => {
                     const json = transaction.toJSON();
-                    expect(json.quantity).toBe(2);
+                    expect(json.items[0].quantity).toBe(2);
                     return Result.ok(transaction);
                 },
             );
@@ -284,8 +293,14 @@ describe('CreateTransactionUseCase', () => {
             );
 
             const largeInput = {
-                productId: 'prod-expensive',
-                quantity: 5,
+                items: [
+                    {
+                        productId: 'prod-expensive',
+                        quantity: 5,
+                        price: 2000000,
+                        subtotal: 10000000
+                    }
+                ],
                 subtotal: 10000000,
                 baseFee: 2000,
                 deliveryFee: 10000,
@@ -317,7 +332,9 @@ describe('CreateTransactionUseCase', () => {
 
             const singleInput = {
                 ...validInput,
-                quantity: 1,
+                items: [
+                    { productId: 'prod-123', quantity: 1, price: 50000, subtotal: 50000 }
+                ],
                 subtotal: 50000,
                 total: 57000,
             };
@@ -358,8 +375,9 @@ describe('CreateTransactionUseCase', () => {
 
             const invalidInput = {
                 ...validInput,
+                items: [{ ...validInput.items[0], customerEmail: 'invalid-email' }], // items still required
                 customerEmail: 'invalid-email',
-            };
+            } as any;
 
             // This should throw from Customer entity constructor
             await expect(useCase.execute(invalidInput)).rejects.toThrow();

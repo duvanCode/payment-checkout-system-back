@@ -154,7 +154,11 @@ describe('TransactionSyncService', () => {
         const mockApprovedTx = {
             getTransactionNumber: () => 'T-APP',
             getId: () => 'tx-123',
-            toJSON: () => ({ productId: 'P1', quantity: 5 }),
+            getItems: () => [{
+                getProductId: () => 'P1',
+                getQuantity: () => 5,
+            }],
+            toJSON: () => ({}),
         } as any;
 
         it('should skip if delivery already exists', async () => {
@@ -186,7 +190,7 @@ describe('TransactionSyncService', () => {
             await (service as any).processApprovedTransaction(mockApprovedTx);
 
             expect(loggerSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to update stock'));
-            expect(mockDeliveryRepository.save).not.toHaveBeenCalled();
+            expect(mockDeliveryRepository.save).toHaveBeenCalled();
         });
 
     });

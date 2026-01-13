@@ -1,27 +1,42 @@
 import { Transaction } from './transaction.entity';
 import { TransactionStatus } from '../enums/transaction-status.enum';
 import { Money } from '../value-objects/money.vo';
+import { TransactionItem } from './transaction-item.entity';
 
 describe('Transaction Entity', () => {
     const mockDate = new Date('2024-01-01');
     let sampleTransaction: Transaction;
+    let mockItems: TransactionItem[];
 
     beforeEach(() => {
+        mockItems = [
+            new TransactionItem(
+                'item-1',
+                'trans-123',
+                'prod-456',
+                'Product Name',
+                2,
+                Money.from(50000, 'COP'),
+                Money.from(100000, 'COP'),
+                mockDate,
+            )
+        ];
+
         sampleTransaction = new Transaction(
             'trans-123',
             'TRX-1234567890-ABC123',
             TransactionStatus.PENDING,
-            'prod-456',
             'cust-789',
-            2,
             Money.from(100000, 'COP'),
             Money.from(5000, 'COP'),
             Money.from(10000, 'COP'),
             Money.from(115000, 'COP'),
+            mockItems,
             mockDate,
             mockDate,
         );
     });
+
 
     describe('constructor', () => {
         it('should create transaction with all required properties', () => {
@@ -36,13 +51,12 @@ describe('Transaction Entity', () => {
                 undefined,
                 'TRX-9999999999-XYZ789',
                 TransactionStatus.PENDING,
-                'prod-456',
                 'cust-789',
-                1,
                 Money.from(50000, 'COP'),
                 Money.from(2500, 'COP'),
                 Money.from(5000, 'COP'),
                 Money.from(57500, 'COP'),
+                mockItems,
                 mockDate,
                 mockDate,
             );
@@ -55,13 +69,12 @@ describe('Transaction Entity', () => {
                 'trans-456',
                 'TRX-1234567890-ABC123',
                 TransactionStatus.APPROVED,
-                'prod-456',
                 'cust-789',
-                1,
                 Money.from(100000, 'COP'),
                 Money.from(5000, 'COP'),
                 Money.from(10000, 'COP'),
                 Money.from(115000, 'COP'),
+                mockItems,
                 mockDate,
                 mockDate,
                 'service-trans-789',
@@ -118,13 +131,12 @@ describe('Transaction Entity', () => {
                 'trans-123',
                 'TRX-1234567890-ABC123',
                 TransactionStatus.APPROVED,
-                'prod-456',
                 'cust-789',
-                1,
                 Money.from(100000, 'COP'),
                 Money.from(5000, 'COP'),
                 Money.from(10000, 'COP'),
                 Money.from(115000, 'COP'),
+                mockItems,
                 mockDate,
                 mockDate,
             );
@@ -138,13 +150,12 @@ describe('Transaction Entity', () => {
                 'trans-123',
                 'TRX-1234567890-ABC123',
                 TransactionStatus.DECLINED,
-                'prod-456',
                 'cust-789',
-                1,
                 Money.from(100000, 'COP'),
                 Money.from(5000, 'COP'),
                 Money.from(10000, 'COP'),
                 Money.from(115000, 'COP'),
+                mockItems,
                 mockDate,
                 mockDate,
             );
@@ -312,9 +323,8 @@ describe('Transaction Entity', () => {
                 id: 'trans-123',
                 transactionNumber: 'TRX-1234567890-ABC123',
                 status: TransactionStatus.PENDING,
-                productId: 'prod-456',
                 customerId: 'cust-789',
-                quantity: 2,
+                items: mockItems.map(item => item.toJSON()),
                 subtotal: 100000,
                 baseFee: 5000,
                 deliveryFee: 10000,

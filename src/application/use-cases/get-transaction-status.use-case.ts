@@ -5,14 +5,21 @@ import type { PaymentGatewayPort } from '../ports/payment-gateway.port';
 import { PAYMENT_GATEWAY } from '../ports/payment-gateway.port';
 import { Result } from '../../shared/result';
 
+export interface TransactionStatusItemResponse {
+    productId: string;
+    quantity: number;
+    productName?: string;
+    price: number;
+    subtotal: number;
+}
+
 export interface TransactionStatusResponse {
     transactionNumber: string;
     internalStatus: string;
     serviceStatus?: string;
     serviceTransactionId?: string;
     total: number;
-    productId: string;
-    quantity: number;
+    items: TransactionStatusItemResponse[];
     createdAt: Date;
     updatedAt: Date;
     processedAt?: Date;
@@ -59,8 +66,13 @@ export class GetTransactionStatusUseCase {
             serviceStatus: latestServiceStatus,
             serviceTransactionId: transactionData.serviceTransactionId,
             total: transactionData.total,
-            productId: transactionData.productId,
-            quantity: transactionData.quantity,
+            items: transactionData.items.map(item => ({
+                productId: item.productId,
+                quantity: item.quantity,
+                productName: item.productName,
+                price: item.price,
+                subtotal: item.subtotal,
+            })),
             createdAt: transactionData.createdAt,
             updatedAt: transactionData.updatedAt,
             processedAt: transactionData.processedAt,
@@ -68,3 +80,4 @@ export class GetTransactionStatusUseCase {
         });
     }
 }
+

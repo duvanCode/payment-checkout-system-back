@@ -6,11 +6,14 @@ import {
     Min,
     Max,
     Length,
-    Matches
+    Matches,
+    IsArray,
+    ValidateNested
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
-export class PaymentRequestDto {
+export class PaymentItemDto {
     @ApiProperty({ example: '123e4567-e89b-12d3-a456-426614174000' })
     @IsString()
     @IsNotEmpty()
@@ -20,6 +23,15 @@ export class PaymentRequestDto {
     @IsNumber()
     @Min(1)
     quantity: number;
+}
+
+export class PaymentRequestDto {
+    @ApiProperty({ type: [PaymentItemDto] })
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => PaymentItemDto)
+    items: PaymentItemDto[];
+
 
     @ApiProperty({
         example: 'tok_test_12345_abcde',

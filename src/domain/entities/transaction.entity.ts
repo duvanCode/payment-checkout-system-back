@@ -1,17 +1,17 @@
 import { TransactionStatus } from '../enums/transaction-status.enum';
 import { Money } from '../value-objects/money.vo';
+import { TransactionItem } from './transaction-item.entity';
 
 export class Transaction {
     private id?: string;
     private transactionNumber: string;
     private status: TransactionStatus;
-    private productId: string;
     private customerId: string;
-    private quantity: number;
     private subtotal: Money;
     private baseFee: Money;
     private deliveryFee: Money;
     private total: Money;
+    private items: TransactionItem[];
     private serviceTransactionId?: string;
     private serviceStatus?: string;
     private errorMessage?: string;
@@ -23,13 +23,12 @@ export class Transaction {
         id: string | undefined,
         transactionNumber: string,
         status: TransactionStatus,
-        productId: string,
         customerId: string,
-        quantity: number,
         subtotal: Money,
         baseFee: Money,
         deliveryFee: Money,
         total: Money,
+        items: TransactionItem[],
         createdAt: Date,
         updatedAt: Date,
         serviceTransactionId?: string,
@@ -40,13 +39,12 @@ export class Transaction {
         this.id = id;
         this.transactionNumber = transactionNumber;
         this.status = status;
-        this.productId = productId;
         this.customerId = customerId;
-        this.quantity = quantity;
         this.subtotal = subtotal;
         this.baseFee = baseFee;
         this.deliveryFee = deliveryFee;
         this.total = total;
+        this.items = items;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.serviceTransactionId = serviceTransactionId;
@@ -54,6 +52,7 @@ export class Transaction {
         this.errorMessage = errorMessage;
         this.processedAt = processedAt;
     }
+
 
     static generateTransactionNumber(): string {
         const timestamp = Date.now();
@@ -140,14 +139,17 @@ export class Transaction {
         this.updatedAt = new Date();
     }
 
+    getItems(): TransactionItem[] {
+        return this.items;
+    }
+
     toJSON() {
         return {
             id: this.id,
             transactionNumber: this.transactionNumber,
             status: this.status,
-            productId: this.productId,
             customerId: this.customerId,
-            quantity: this.quantity,
+            items: this.items.map(item => item.toJSON()),
             subtotal: this.subtotal.getAmount(),
             baseFee: this.baseFee.getAmount(),
             deliveryFee: this.deliveryFee.getAmount(),
