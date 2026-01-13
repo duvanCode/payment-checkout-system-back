@@ -64,12 +64,13 @@ src/
 *   **Testing:** [Jest](https://jestjs.io/)
 
 ## 💾 Modelo de Datos
-El esquema está diseñado para rastrear el ciclo de vida completo de una compra y su entrega.
+El esquema está diseñado para rastrear el ciclo de vida completo de una compra y su entrega, incluyendo el detalle de ítems por transacción.
 
 ```mermaid
 erDiagram
     CUSTOMER ||--o{ TRANSACTION : places
-    PRODUCT ||--o{ TRANSACTION : included_in
+    TRANSACTION ||--o{ TRANSACTION_ITEM : contains
+    PRODUCT ||--o{ TRANSACTION_ITEM : referenced_in
     TRANSACTION ||--o| DELIVERY : has
     
     PRODUCT {
@@ -77,22 +78,38 @@ erDiagram
         string name
         decimal price
         int stock
+        string imageUrl
     }
     CUSTOMER {
         string id PK
         string email
         string fullName
+        string phone
     }
     TRANSACTION {
         string id PK
+        string transactionNumber
         string status
+        decimal subtotal
+        decimal baseFee
+        decimal deliveryFee
         decimal total
         string serviceTransactionId
+        string serviceStatus
+    }
+    TRANSACTION_ITEM {
+        string id PK
+        int quantity
+        decimal price
+        decimal subtotal
     }
     DELIVERY {
         string id PK
         string trackingNumber
         string address
+        string city
+        string department
+        datetime estimatedDeliveryDate
     }
 ```
 
@@ -117,8 +134,8 @@ erDiagram
     ```
 
 ## 📖 Documentación de la API (Swagger)
-Una vez que el servidor esté corriendo, puedes explorar y probar todos los endpoints desde la interfaz interactiva de Swagger:
-🔗 [http://localhost:3000/api](http://localhost:3000/api)
+Una vez desplegado, puedes explorar y probar todos los endpoints desde la interfaz interactiva de Swagger:
+🔗 [http://18.218.69.139:3000/api](http://18.218.69.139:3000/api)
 
 ## 🔌 API Endpoints
 | Método | Endpoint | Descripción |
@@ -142,7 +159,13 @@ npm run test:cov
 > **Cobertura actual:** 100% en Domain, 98% en Application, e Infrastructure.
 
 ## 📦 Deployment
-El backend está listo para ser desplegado en servicios de AWS utilizando contenedores Docker. Se recomienda el uso de **NestJS Mau** para despliegues rápidos en AWS o procesos de CI/CD con GitHub Actions.
+El backend está containerizado y listo para despliegue.
+
+Para desplegar en cualquier entorno con Docker:
+```bash
+npm run docker:up
+```
+Esto levantará la base de datos y la aplicación automáticamente.
 
 ## 🔒 Seguridad
 *   **Validación de Datos:** Uso de `class-validator` y `class-transformer` en todos los DTOs.
