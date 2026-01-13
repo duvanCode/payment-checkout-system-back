@@ -462,6 +462,7 @@ describe('PrismaTransactionRepository', () => {
                     processedAt: processedAt,
                     updatedAt: expect.any(Date),
                 },
+                include: { items: true },
             });
         });
 
@@ -549,9 +550,16 @@ describe('PrismaTransactionRepository', () => {
                     id: 'trans-pending-1',
                     transactionNumber: 'TRX-PENDING-1',
                     status: TransactionStatus.PENDING,
-                    productId: 'prod-1',
                     customerId: 'cust-1',
-                    quantity: 1,
+                    items: [{
+                        id: 'item-1',
+                        productId: 'prod-1',
+                        productName: 'Product',
+                        quantity: 1,
+                        price: 100000,
+                        subtotal: 100000,
+                        createdAt: new Date('2024-01-01'),
+                    }],
                     subtotal: 100000,
                     baseFee: 2000,
                     deliveryFee: 5000,
@@ -612,9 +620,11 @@ describe('PrismaTransactionRepository', () => {
                         not: null,
                     },
                 },
+
                 orderBy: {
                     createdAt: 'asc',
                 },
+                include: { items: true },
             });
         });
 
