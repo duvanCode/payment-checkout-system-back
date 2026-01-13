@@ -15,9 +15,10 @@ const prisma = new PrismaClient({
 async function main() {
     console.log('🌱 Starting seed...');
 
-    // Limpiar datos existentes
+    // Limpiar datos existentes (orden inverso a la creación)
     await prisma.delivery.deleteMany();
-    await prisma.transaction.deleteMany();
+    await prisma.transactionItem.deleteMany(); // Primero eliminar los items
+    await prisma.transaction.deleteMany();      // Luego las transacciones
     await prisma.customer.deleteMany();
     await prisma.product.deleteMany();
 
